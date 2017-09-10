@@ -1,0 +1,2 @@
+http://bochs.sourceforge.net/techspec/adlib_sb.txt
+ftp://ftp.amiwiki.spb.ru/Dos/soft/UTIL/QEMM/TECHNOTE/qpi.tec
