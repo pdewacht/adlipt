@@ -5,6 +5,12 @@ For more information, see [the thread on the Vogons forum][1].
 
 [1]: https://www.vogons.org/viewtopic.php?f=62&t=55105
 
+## Download
+
+Download the driver from [the Github releases tab][2].
+
+[2]: https://github.com/pdewacht/adlipt/releases/latest
+
 ## Usage
 
 Load the TSR with the command:
@@ -20,7 +26,7 @@ with the command:
 
     ADLIPT DISABLE
 
-and re-enabled with:
+Re-enable with:
 
     ADLIPT ENABLE
 
@@ -34,6 +40,10 @@ and re-enabled with:
     - Support for other memory managers could be added if there's
       interest.
 - The OPL2LPT board ;)
+
+## Building
+
+Compiles with OpenWatcom. Use the `build.sh` script.
 
 ## Copying
 

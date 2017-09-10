@@ -241,7 +241,7 @@ int main(void) {
   int i;
 
   cputs("ADLIPT driver, version " XSTR(VERSION_MAJOR) "." XSTR(VERSION_MINOR)
-        "  Peter De Wachter 2017\r\n\r\n");
+        "  Peter De Wachter 2017  github.com/pdewacht/adlipt\r\n\r\n");
 
   /* Check if the TSR is already in memory */
   /* Also look for an unused AMIS multiplex id */
