@@ -30,19 +30,20 @@ struct amis_info {
 };
 
 
-int emm386_get_version(int handle, char __near *version_buf);
-/* Interrupt list: 214402SF02 GET MEMORY MANAGER VERSION */
-#pragma aux emm386_get_version =                \
+int ioctl_read(int handle, char __near *buf, int nbytes);
+#pragma aux ioctl_read =                        \
   "mov ax, 0x4402"                              \
-  "mov cx, 2"                                   \
-  "mov di, dx"                                  \
-  "mov byte ptr [di], 2"                        \
   "int 0x21"                                    \
   "sbb dx, dx"                                  \
-  parm [bx] [dx]                                \
+  parm [bx] [dx] [cx]                           \
   value [dx]                                    \
   modify [ax bx cx dx si di]
 
+static int emm386_get_version(int handle, char __near *version_buf) {
+  /* Interrupt list: 214402SF02 GET MEMORY MANAGER VERSION */
+  version_buf[0] = 2;
+  return ioctl_read(handle, version_buf, 2);
+}
 
 int emm386_virtualize_io(int first, int last, int count, void __far *table, int size);
 /* Interrupt list: 2F4A15BX0000 INSTALL I/O VIRTUALIZATION HANDLER */
@@ -174,6 +175,31 @@ static bool setup_qemm() {
 }
 
 
+static void check_jemm(char bios_id) {
+  unsigned char buf[6] = { 0 };
+  int handle, err;
+
+  err = _dos_open("EMMXXXX0", O_RDONLY, &handle);
+  if (err) {
+    err = _dos_open("EMMQXXX0", O_RDONLY, &handle);
+  }
+  if (err) {
+    return;
+  }
+  err = ioctl_read(handle, &buf, 6);
+  _dos_close(handle);
+  if (err || !(buf[0] == 0x28 && buf[1] == 0)) {
+    return;
+  }
+
+  cputs("Detected JEMM memory manager. Use this command instead:\r\n"
+        "    JLOAD JADLIPT.DLL LPT");
+  putch('1' + bios_id);
+  cputs("\r\n");
+  exit(1);
+}
+
+
 static short get_lpt_port(int i) {
   return *(short __far *)MK_FP(0x40, 6 + 2*i);
 }
@@ -276,9 +302,10 @@ int main(void) {
       cputs("Error: No unused AMIS multiplex id found\n");
       return 1;
     }
+    check_jemm(cfg->bios_id);
     if (!setup_qemm() && !setup_emm386()) {
       cputs("Error: no supported memory manager found\r\n"
-            "Requires EMM386 4.46+ or QEMM 7.03+\r\n");
+            "Requires EMM386 4.46+, QEMM 7.03+ or JEMM\r\n");
       return 1;
     }
     status(cfg);

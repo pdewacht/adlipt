@@ -7,6 +7,7 @@ VERSION_MINOR=4
 CC='wcc -bt=dos -zq -oxhs'
 AS='wasm -zq'
 DEFS="-dVERSION_MAJOR=$VERSION_MAJOR -dVERSION_MINOR=$VERSION_MINOR"
+#DEFS="$DEFS -dDEBUG"
 
 set -x
 $CC $DEFS adlipt.c
