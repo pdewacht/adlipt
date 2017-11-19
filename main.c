@@ -174,31 +174,6 @@ static bool setup_qemm() {
 }
 
 
-static void install(void) {
-  int __far *env_seg;
-  int size;
-
-  if (!setup_qemm() && !setup_emm386()) {
-    cputs("Error: no supported memory manager found\r\n"
-          "Requires EMM386 4.46+ or QEMM 7.03+\r\n");
-    exit(1);
-  }
-
-  /* hook AMIS interrupt */
-  amis_chain = _dos_getvect(0x2D);
-  _dos_setvect(0x2D, (void (__interrupt *)()) amis_hook);
-
-  /* free environment block */
-  env_seg = MK_FP(_psp, 0x2C);
-  _dos_freemem(*env_seg);
-  *env_seg = 0;
-
-  /* terminate and stay resident */
-  size = FP_SEG(&resident_end) + (FP_OFF(&resident_end) + 15) / 16 - _psp;
-  _dos_keep(0, size);
-}
-
-
 static short get_lpt_port(int i) {
   return *(short __far *)MK_FP(0x40, 6 + 2*i);
 }
@@ -213,22 +188,12 @@ static void usage(void) {
 
 
 static void status(struct config __far *cfg) {
-  char buf[5];
-  int i;
-
   cputs("  Status: ");
   cputs(cfg->enabled ? "Enabled" : "Disabled");
   cputs("\r\n");
 
-  cputs("  Port: ");
-  for (i = 1; i < 4 && get_lpt_port(i) != cfg->lpt; i++);
-  if (i < 4) {
-    cputs("LPT");
-    putch('0' + i);
-  } else {
-    cputs(itoa(i, buf, 16));
-    putch('h');
-  }
+  cputs("  Port: LPT");
+  putch('1' + cfg->bios_id);
   cputs("\r\n");
 }
 
@@ -240,8 +205,8 @@ int main(void) {
   struct config __far *cfg = &config;
   int i;
 
-  cputs("ADLIPT driver, version " XSTR(VERSION_MAJOR) "." XSTR(VERSION_MINOR)
-        "  Peter De Wachter 2017  github.com/pdewacht/adlipt\r\n\r\n");
+  cputs("ADLiPT " XSTR(VERSION_MAJOR) "." XSTR(VERSION_MINOR)
+        "  github.com/pdewacht/adlipt\r\n\r\n");
 
   /* Check if the TSR is already in memory */
   /* Also look for an unused AMIS multiplex id */
@@ -282,7 +247,8 @@ int main(void) {
           cputs(" is not present.\r\n");
           exit(1);
         }
-        cfg->lpt = port;
+        cfg->lpt_port = port;
+        cfg->bios_id = i - 1;
       }
       else if (stricmp(arg, "enable") == 0) {
         cfg->enabled = true;
@@ -296,17 +262,37 @@ int main(void) {
     }
   }
 
-  if (!installed && !cfg->lpt) {
-    usage();
+  if (installed) {
+    status(cfg);
   }
-  status(cfg);
+  else {
+    int __far *env_seg;
 
-  if (!installed) {
+    if (!cfg->lpt_port) {
+      usage();
+      return 1;
+    }
     if (!found_unused_amis_id) {
       cputs("Error: No unused AMIS multiplex id found\n");
-      exit(1);
+      return 1;
     }
-    install();
+    if (!setup_qemm() && !setup_emm386()) {
+      cputs("Error: no supported memory manager found\r\n"
+            "Requires EMM386 4.46+ or QEMM 7.03+\r\n");
+      return 1;
+    }
+    status(cfg);
+
+    /* hook AMIS interrupt */
+    amis_chain = _dos_getvect(0x2D);
+    _dos_setvect(0x2D, (void (__interrupt *)()) amis_hook);
+
+    /* free environment block */
+    env_seg = MK_FP(_psp, 0x2C);
+    _dos_freemem(*env_seg);
+    *env_seg = 0;
+
+    _dos_keep(0, ((char __huge *)&resident_end - (char __huge *)(_psp :> 0) + 15) / 16);
   }
   return 0;
 }

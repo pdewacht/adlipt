@@ -8,7 +8,8 @@ union version {
 
 _Packed struct config {
   char enabled;
-  int lpt;
+  short lpt_port;
+  short bios_id;
 };
 
 #define RESIDENT __based(__segname("RESIDENT"))
@@ -26,3 +27,10 @@ extern void __far * RESIDENT qemm_chain;
 
 extern char RESIDENT resident_end[];
 
+
+unsigned emulate_adlib_io(int port, int is_write, unsigned ax);
+#ifdef _M_I86
+#pragma aux emulate_adlib_io parm [dx] [cx] [ax] value [ax]
+#else
+#pragma aux emulate_adlib_io parm [edx] [ecx] [eax] value [eax]
+#endif

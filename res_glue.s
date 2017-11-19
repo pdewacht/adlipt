@@ -9,7 +9,7 @@
         public qemm_glue_
         public _qemm_chain
 
-        extern porthandler_ : proc
+        extern emulate_adlib_io_ : proc
 
 
 cmp_ah  macro
@@ -35,8 +35,9 @@ _amis_header:
 
 ;;; Configuration immediately follows AMIS header
 _config:
-enable: db 1
-lpt:    dw 0
+enable:   db 1
+lpt_port: dw 0
+bios_id:  dw -1
 
 
 ;;; IBM Interrupt Sharing Protocol header
@@ -93,7 +94,7 @@ emm386_handler:
         je @@emm_not_enabled
         push cx
         push dx
-        call porthandler_
+        call emulate_adlib_io_
         pop dx
         pop cx
         clc
@@ -118,7 +119,7 @@ qemm_glue_:
         push ds
         push cs
         pop ds
-        call porthandler_
+        call emulate_adlib_io_
         pop ds
         retf
 @@qemm_ignore:

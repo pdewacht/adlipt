@@ -2,7 +2,7 @@
 set -e
 
 VERSION_MAJOR=0
-VERSION_MINOR=3
+VERSION_MINOR=4
 
 CC='wcc -bt=dos -zq -oxhs'
 AS='wasm -zq'
