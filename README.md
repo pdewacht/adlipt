@@ -1,6 +1,6 @@
-# ADLIPT
+# ADLiPT
 
-ADLIPT is a driver for the "Adlib on a parallel port" OPL2LPT board.
+ADLiPT is a driver for the "Adlib on a parallel port" OPL2LPT board.
 For more information, see [the thread on the Vogons forum][1].
 
 [1]: https://www.vogons.org/viewtopic.php?f=62&t=55105
@@ -12,6 +12,8 @@ Download the driver from [the Github releases tab][2].
 [2]: https://github.com/pdewacht/adlipt/releases/latest
 
 ## Usage
+
+### EMM386 or QEMM
 
 Load the TSR with the command:
 
@@ -30,10 +32,17 @@ Re-enable with:
 
     ADLIPT ENABLE
 
+### JEMM
+
+Load ADLiPT using the command:
+
+    JLOAD JADLIPT.DLL LPT1
+
+
 ## Requirements
 
 - 386 CPU
-- EMM386 or QEMM
+- EMM386, QEMM or JEMM
     - EMM386 version 4.46 or later (tested with version 4.49 from
       MS-DOS 6.22)
     - QEMM 7.03 or later (tested with QEMM 7.5)
