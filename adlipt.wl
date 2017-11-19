@@ -1,6 +1,6 @@
 name adlipt
 
-file main
+file adlipt
 file res_opl2
 file res_glue
 file res_end

@@ -9,7 +9,7 @@ AS='wasm -zq'
 DEFS="-dVERSION_MAJOR=$VERSION_MAJOR -dVERSION_MINOR=$VERSION_MINOR"
 
 set -x
-$CC $DEFS main.c
+$CC $DEFS adlipt.c
 $CC $DEFS res_opl2.c
 $AS $DEFS res_glue.s
 $AS $DEFS res_end.s
