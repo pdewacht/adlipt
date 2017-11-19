@@ -1,0 +1,5 @@
+adpatch
+adpatch.exe
+patterns.rl
+patch.c
+*.o

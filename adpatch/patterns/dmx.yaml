@@ -1,0 +1,202 @@
+---
+name: DMX engine Adlib detection
+find: |
+  bits 32
+  test cl,0xe0
+  jnz L1
+  and ebx,0xe0
+  cmp ebx,0xc0
+  jnz L1
+  mov edx,2
+  jmp short L2
+  L1: xor edx,edx
+  L2:
+replace: |
+  bits 32
+  mov edx,2
+---
+name: DMX engine Adlib output (part A)
+find: |
+  ; ax: port
+  ; dx: register
+  ; bx: data
+  bits 32
+  sub esp, byte +0x4
+  mov ecx,eax
+  mov [esp],bl
+  mov eax,edx
+  xor edx,edx
+  mov dx,cx
+  out dx,al
+  mov ebx,[dword ANYDWORD]
+  test ebx,ebx
+  jng L2
+  L1: xor edx,edx
+  mov dx,cx
+  inc edx
+  dec ebx
+  sub eax,eax
+  in al,dx
+  test ebx,ebx
+  jg L1
+  L2: xor edx,edx
+  mov dx,cx
+  mov al,[esp]
+  inc edx
+  out dx,al
+  mov ebx,[dword ANYDWORD]
+  test ebx,ebx
+  jng L4
+  L3: xor edx,edx
+  mov dx,cx
+  dec ebx
+  sub eax,eax
+  in al,dx
+  test ebx,ebx
+  jg L3
+  L4: add esp,byte +0x4
+replace: |
+  ; we need to leave room for the relocations,
+  ; so we have carefully places 'test eax, 0' opcodes...
+  bits 32
+  cmp ax, 0x388
+  jne SKIP
+  mov al, dl
+
+  mov dx, PORT
+  out dx, al
+  inc edx
+  inc edx
+  mov al, 13
+  test eax, 0
+  out dx, al
+  mov al, 9
+  out dx, al
+  mov al, 13
+  out dx, al
+  in al, dx
+  in al, dx
+  in al, dx
+  in al, dx
+  in al, dx
+  in al, dx
+  dec edx
+  dec edx
+
+  mov al, bl
+  out dx, al
+  inc edx
+  inc edx
+  mov al, 12
+  out dx, al
+  mov al, 8
+  out dx, al
+  mov al, 12
+  out dx, al
+  test eax, 0
+
+  push ecx
+  xor ecx, ecx
+  mov cl, 35
+  L1: in al, dx
+  loop L1
+  pop ecx
+
+  SKIP:
+---
+name: DMX engine Adlib output (part B)
+find: |
+  ; ax: register
+  ; dx: data
+  bits 32
+  push ebx
+  push ecx
+  mov cl,dl
+  mov edx,[dword ANYDWORD]
+  and eax,0xffff
+  out dx,al
+  mov ebx,[dword ANYDWORD]
+  test ebx,ebx
+  jng L2
+  L1: mov edx,[dword ANYDWORD]
+  dec ebx
+  sub eax,eax
+  in al,dx
+  test ebx,ebx
+  jg L1
+  L2: mov edx,[dword ANYDWORD]
+  mov al,cl
+  inc edx
+  out dx,al
+  mov ebx,[dword ANYDWORD]
+  test ebx,ebx
+  jng L4
+  L3: mov edx,[dword ANYDWORD]
+  dec ebx
+  sub eax,eax
+  in al,dx
+  test ebx,ebx
+  jg L3
+  L4: pop ecx
+  pop ebx
+  ret
+  ;alignment padding
+  BEGIN
+    db 0x8D, 0x80, 0x00, 0x00, 0x00, 0x00
+  ALT
+    db 0x8D, 0x44, 0x20, 0x00
+  ALT
+    db 0x8D, 0x40, 0x00
+  ALT
+    db 0x8B, 0xC0
+  END
+replace: |
+  ; we need to leave room for the relocations,
+  ; so we have carefully places 'test eax, 0' opcodes...
+  ; TODO: shorten this by 2 bytes so we don't have to write in the alignment padding
+  bits 32
+  push edx
+  mov dx, PORT
+  test eax, 0
+  out dx, al
+  inc edx
+  inc edx
+  mov al, 13
+  out dx, al
+  nop
+  test eax, 0
+  mov al, 9
+  out dx, al
+  mov al, 13
+  test eax, 0
+  out dx, al
+  in al, dx
+  in al, dx
+  in al, dx
+  in al, dx
+  in al, dx
+  in al, dx
+  dec edx
+  dec edx
+  test eax, 0
+
+  pop eax
+  out dx, al
+  mov al, 12
+  inc edx
+  test eax, 0
+  inc edx
+  out dx, al
+  mov al, 8
+  out dx, al
+  test eax, 0
+  mov al, 12
+  out dx, al
+
+  push ecx
+  xor ecx, ecx
+  mov cl, 35
+  L1: in al, dx
+  loop L1
+  pop ecx
+  ret

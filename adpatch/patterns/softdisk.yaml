@@ -1,0 +1,42 @@
+---
+name: Softdisk/Dangerous Dave Adlib output
+find: |
+  push bp
+  db 0x8B, 0xEC  ;mov bp,sp
+  pushf
+  cli
+  mov dx, 0x388
+  mov al, [bp+6]
+  out dx, al
+  push word [ANYWORD]
+  push cs
+  db 0xe8, ANYBYTE, ANYBYTE
+  BEGIN
+    pop cx
+  ALT
+    inc sp
+    inc sp
+  END
+  mov dx, 0x389
+  mov al, [bp+8]
+  out dx, al
+  popf
+  push word [ANYWORD]
+  push cs
+  db 0xe8, ANYBYTE, ANYBYTE
+  BEGIN
+    pop cx
+  ALT
+    inc sp
+    inc sp
+  END
+  pop bp
+replace: |
+  pushf
+  cli
+  ; sp shenanigans should be safe with cli
+  ; I hope
+  add sp, 6
+  %include 'compact.s'
+  sub sp, 10
+  popf

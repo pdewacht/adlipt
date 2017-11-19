@@ -1,0 +1,41 @@
+---
+name: Early id Software Adlib check
+find: |
+  test byte [bp-1], 0xE0
+  db 0x75, ANYBYTE
+  mov al, [bp-2]
+  mov ah, 0
+  and ax, 0xE0
+  cmp ax, 0xC0
+  db 0x75, ANYBYTE
+replace: |
+  nop
+---
+name: Early id Software Adlib output
+find: |
+  pushf
+  cli
+  mov dx,0x388
+  mov al,[bp+0x6]
+  out dx,al
+  BEGIN
+    in al,dx
+  REPEAT
+  BEGIN
+    mov dx,0x389
+  ALT
+    inc dx
+  END
+  mov al,[bp+0x8]
+  out dx,al
+  popf
+  BEGIN
+    mov dx,0x388
+  ALT
+    dec dx
+  END
+  BEGIN
+    in al,dx
+  REPEAT
+replace: |
+  %include 'id.s'

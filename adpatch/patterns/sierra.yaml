@@ -1,0 +1,101 @@
+---
+name: Sierra install.exe Adlib detection
+find: |
+  L1: in al, dx
+  loop L1
+  in al, dx
+  and al, 0xe0
+  xor al, 0xc0
+  db 0x75, ANYBYTE  ;jnz
+  mov al, [cs:ANYWORD]
+  and al, 0xe0
+  db 0x75, ANYBYTE  ;jnz
+replace: |
+  nop
+---
+name: Sierra SCI Adlib output (variant 1)
+find: |
+  mov dx, 0x388
+  db 0x8B, 0xC3  ;mov ax,bx alt encoding
+  out dx, al
+  BEGIN
+    in al,dx
+  REPEAT
+  inc dx
+  db 0x8B, 0xC1  ;mov ax,cx alt encoding
+  out dx, al
+  dec dx
+  BEGIN
+    in al,dx
+  REPEAT
+replace: |
+  push cx
+  push cx
+  push bx
+  %include 'compact.s'
+  pop cx
+---
+name: Sierra SCI Adlib output (variant 2)
+find: |
+  mov dx, [cs:ANYWORD]
+  db 0x8B, 0xC3  ;mov ax,bx alt encoding
+  out dx, al
+  BEGIN
+    in al,dx
+  REPEAT
+  mov dx, [cs:ANYWORD]
+  db 0x8B, 0xC1  ;mov ax,cx alt encoding
+  out dx, al
+  mov dx, [cs:ANYWORD]
+  BEGIN
+    in al,dx
+  REPEAT
+replace: |
+  push cx
+  push cx
+  push bx
+  %include 'compact.s'
+  pop cx
+---
+name: Sierra SCI Adlib output (variant 3)
+find: |
+  mov dx, [cs:ANYWORD]
+  db 0x8B, 0xC3  ;mov ax,bx alt encoding
+  out dx, al
+  BEGIN
+    in al, dx
+  REPEAT
+  mov dx, [cs:ANYWORD]
+  db 0x8B, 0xC1  ;mov ax,cx alt encoding
+  out dx, al
+  mov cx, ANYWORD
+  mov dx, [cs:ANYWORD]
+  L1: in al, dx
+  loop L1
+replace: |
+  push cx
+  push bx
+  %include 'compact.s'
+---
+name: Sierra SCI Adlib output (32-bit)
+find: |
+  bits 32
+  db 0x66, 0x64, 0x8B, 0x15, ANYBYTE, ANYBYTE, ANYBYTE, ANYBYTE  ;mov dx, [dword fs:ANYDWORD]
+  db 0x66, 0x8B, 0xC3  ;mov ax,bx alt encoding
+  out dx, al
+  BEGIN
+    in al, dx
+  REPEAT
+  db 0x66, 0x64, 0x8B, 0x15, ANYBYTE, ANYBYTE, ANYBYTE, ANYBYTE  ;mov dx, [dword fs:ANYDWORD]
+  db 0x66, 0x8B, 0xC1  ;mov ax,cx alt encoding
+  out dx, al
+  mov ecx, ANYDWORD
+  L1:
+  db 0x66, 0x64, 0x8B, 0x15, ANYBYTE, ANYBYTE, ANYBYTE, ANYBYTE  ;mov dx, [dword fs:ANYDWORD]
+  in al, dx
+  loop L1
+replace: |
+  bits 32
+  push cx
+  push bx
+  %include 'compact.s'

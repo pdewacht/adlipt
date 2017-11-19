@@ -1,0 +1,14 @@
+---
+find: db 'Packed file is corrupt'
+warn: "This file might be compressed using EXEPACK."
+---
+find: db 'PKLITE Copr. '
+warn: "This file might be compressed using PKLITE."
+---
+find: |
+  BEGIN
+    db 'LZ09'
+  ALT
+    db 'LZ91'
+  END
+warn: "This file might be compressed using LZEXE."
