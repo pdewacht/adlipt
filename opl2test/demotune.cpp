@@ -7,7 +7,7 @@
  */
 
 /**
- * Hacked for a OPL2PRN test program by pdewacht@gmail.com.
+ * Hacked for a OPL2LPT test program by pdewacht@gmail.com.
  */
 
 #include "OPL2.h"

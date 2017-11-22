@@ -28,7 +28,7 @@
  */
 
 /**
- * Hacked into a OPL2PRN test program by pdewacht@gmail.com.
+ * Hacked into a OPL2LPT test program by pdewacht@gmail.com.
  */
 
 #include <conio.h>
@@ -81,7 +81,7 @@ void OPL2::init(short lpt_base) {
  * Send the given byte of data to the given register of the OPL2 chip.
  */
 void OPL2::write(byte reg, byte data) {
-#ifdef OPL2PRN
+#ifdef ADLIB
 
 	outp(0x388, reg);
 	for (int i = 0; i < 6; i++) {
