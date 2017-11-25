@@ -27,8 +27,8 @@ void timer_setup(unsigned frequency)
   timer_counter = 0x1234DD / frequency;
   timer_sum = 0;
 
-  prev_timer_handler = _dos_getvect(0x1C);
-  _dos_setvect(0x1C, timer_handler);
+  prev_timer_handler = _dos_getvect(0x08);
+  _dos_setvect(0x08, timer_handler);
 
   _disable();
   outp(0x43, 0x34);
@@ -45,7 +45,7 @@ void timer_shutdown()
   outp(0x40, 0);
   _enable();
 
-  _dos_setvect(0x1C, prev_timer_handler);
+  _dos_setvect(0x08, prev_timer_handler);
 }
 
 unsigned long timer_get() {

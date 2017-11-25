@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-VERSION=20171119
+VERSION=20171125
 
 CXX='wpp -bt=dos -zq -oxhs'
 DEFS="-dVERSION=$VERSION"
