@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <conio.h>
+#include <dos.h>
 #include <i86.h>
 #include "OPL2.h"
 #include "demotune.h"
@@ -8,12 +9,12 @@
 #define XSTR(x) STR(x)
 
 
-short get_lpt_port(int i)
+static short get_lpt_port(int i)
 {
   return *(short __far *)MK_FP(0x40, 6 + 2*i);
 }
 
-short setup(void)
+static short setup(void)
 {
   char num_ports, port, i;
 
@@ -56,6 +57,13 @@ short setup(void)
   return 0;
 }
 
+static volatile int interrupted = 0;
+
+static void __interrupt __far ctrlc_handler()
+{
+  interrupted = 1;
+}
+
 int main(void)
 {
   cputs("== OPT2LPT test program (" XSTR(VERSION) ") ==\r\n\r\n");
@@ -64,17 +72,18 @@ int main(void)
   do {
     getch();
   } while (kbhit());
+  _dos_setvect(0x23, ctrlc_handler);
   extern OPL2 opl2;
   opl2.init(lpt_base);
   music_setup();
   cputs("\r\n\r\nPress any key to stop...");
-  while (!kbhit()) {
+  while (!kbhit() && !interrupted) {
     music_loop();
   }
   music_shutdown();
-  do {
+  while (kbhit()) {
     getch();
-  } while (kbhit());
+  }
   cputs("\r\n\r\n");
   return 0;
 }
