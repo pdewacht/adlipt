@@ -1,9 +1,11 @@
-; arguments in al, ah
+; arguments in [ebp+ARG1], [ebp+ARG2]
 ; modifies eax, edx
+; 49 bytes
 
         bits 32
 
         mov dx, PORT
+        mov al, [ebp+ARG1]
         out dx, al
         inc edx
         inc edx
@@ -22,7 +24,7 @@
         dec edx
         dec edx
 
-        mov al, ah
+        mov al, [ebp+ARG2]
         out dx, al
         inc edx
         inc edx

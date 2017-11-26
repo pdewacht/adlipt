@@ -1,7 +1,9 @@
-; arguments in al, ah
-; modifies ax, dx
+; arguments pop'ed from the stack
+; modifies ax, dx, sp
+; 44 bytes
 
         mov dx, PORT
+        pop ax
         out dx, al
         inc dx
         inc dx
@@ -20,7 +22,7 @@
         dec dx
         dec dx
 
-        mov al, ah
+        pop ax
         out dx, al
         inc dx
         inc dx

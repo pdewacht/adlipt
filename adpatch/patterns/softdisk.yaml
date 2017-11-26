@@ -37,6 +37,6 @@ replace: |
   ; sp shenanigans should be safe with cli
   ; I hope
   add sp, 6
-  %include 'compact.s'
+  %include 'compact_st.s'
   sub sp, 10
   popf
