@@ -22,6 +22,16 @@ Cons:
 
 - Patches need to be written for each game by hand
 
+## Compressed EXEs
+
+DOS software often shipped with compressed EXEs. Such EXEs need to be
+unpacked before they can be patched. ADPATCH will detect the more
+common compression schemes and warn about them ("This file might be
+compressed"). If you see such a warning, you should try decompressing
+it and running ADPATCH again. I recommend [Ben Castricum's
+UNP](http://unp.bencastricum.nl/) decompressor, it will handle pretty
+much all formats.
+
 ## Working games
 
 - Sierra
