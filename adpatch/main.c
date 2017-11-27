@@ -135,7 +135,7 @@ static void usage() {
           "Options:\n"
           "  -i            Patch in-place\n"
           "  -a            Ask before applying a patch\n"
-          "  -p PORT       Set OPT2LPT port (default: " DEFAULT_PORT ")\n"
+          "  -p PORT       Set OPL2LPT port (default: " DEFAULT_PORT ")\n"
           );
   exit(1);
 }

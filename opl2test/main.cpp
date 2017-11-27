@@ -41,7 +41,7 @@ static short setup(void)
         cprintf(" LPT%d", i);
       }
     }
-    cputs("\r\nWhich one is the OPT2LPT connected to? [");
+    cputs("\r\nWhich one is the OPL2LPT connected to? [");
     for (i = 1; i < 4; i++) {
       if (get_lpt_port(i)) {
         cprintf("%d", i);
@@ -66,7 +66,7 @@ static void __interrupt __far ctrlc_handler()
 
 int main(void)
 {
-  cputs("== OPT2LPT test program (" XSTR(VERSION) ") ==\r\n\r\n");
+  cputs("== OPL2LPT test program (" XSTR(VERSION) ") ==\r\n\r\n");
   short lpt_base = setup();
   cputs("\r\nPress any key to play some music...");
   do {

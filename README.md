@@ -1,4 +1,4 @@
-# OPT2LPT Utilities
+# OPL2LPT Utilities
 
 Here you can find various software for the OPL2LPT board.
 
@@ -11,7 +11,7 @@ The ADLiPT TSR emulates an Adlib sound card.
 
 ## ADPATCH
 
-ADPATCH patches games to add OPT2LPT support.
+ADPATCH patches games to add OPL2LPT support.
 [Read more.](adpatch/)
 
 ## OPL2TEST
