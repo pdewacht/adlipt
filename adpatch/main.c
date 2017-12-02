@@ -14,10 +14,10 @@
 #define XSTR(x) STR(x)
 
 
-#ifdef unix
-  #define DEFAULT_PORT "0x378"
-#else
+#ifdef __WATCOMC__
   #define DEFAULT_PORT "LPT1"
+#else
+  #define DEFAULT_PORT "0x378"
 #endif
 
 
