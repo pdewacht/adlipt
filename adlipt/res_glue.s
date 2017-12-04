@@ -79,11 +79,7 @@ _emm386_table:
         dw 0x0389, emm386_handler
 
 emm386_handler:
-        push cx
-        push dx
         call emulate_adlib_io_
-        pop dx
-        pop cx
         clc
 _retf:  retf
 
