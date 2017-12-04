@@ -45,10 +45,11 @@ static int emm386_get_version(int handle, char __near *version_buf) {
   return ioctl_read(handle, version_buf, 2);
 }
 
-int emm386_virtualize_io(int first, int last, int count, void __far *table, int size);
+int emm386_virtualize_io(int first, int last, int count, void __far *table, int size, int *out_handle);
 /* Interrupt list: 2F4A15BX0000 INSTALL I/O VIRTUALIZATION HANDLER */
 #pragma aux emm386_virtualize_io =              \
   ".386"                                        \
+  "push ax"                                     \
   "push ds"                                     \
   "mov ax, es"                                  \
   "mov ds, ax"                                  \
@@ -56,10 +57,25 @@ int emm386_virtualize_io(int first, int last, int count, void __far *table, int 
   "shl edx, 16"                                 \
   "mov dx, bx"                                  \
   "xor bx, bx"                                  \
+  "stc"                                         \
+  "int 0x2F"                                    \
+  "pop ds"                                      \
+  "pop bx"                                      \
+  "mov [bx], ax"                                \
+  "sbb ax, ax"                                  \
+  parm [bx] [dx] [cx] [es si] [di] [ax]         \
+  value [ax]                                    \
+  modify [ax bx cx dx si di]
+
+
+int emm386_unvirtualize_io(int handle);
+#pragma aux emm386_unvirtualize_io =            \
+  "mov ax, 0x4A15"                              \
+  "mov bx, 1"                                   \
+  "stc"                                         \
   "int 0x2F"                                    \
   "sbb ax, ax"                                  \
-  "pop ds"                                      \
-  parm [bx] [dx] [cx] [es si] [di]              \
+  parm [si]                                     \
   value [ax]                                    \
   modify [ax bx cx dx si di]
 
@@ -125,9 +141,35 @@ void qpi_clear_port_trap(void __far **qpi_entry, int port);
   modify [ax]
 
 
+void qpi_clear_port_trap(void __far **qpi_entry, int port);
+#pragma aux qpi_clear_port_trap =               \
+  "mov ax, 0x1A0A"                              \
+  "call dword ptr [si]"                         \
+  parm [si] [dx]                                \
+  modify [ax]
+
+
+static bool amis_unhook(struct iisp_header __far *handler, unsigned our_seg) {
+  for (;;) {
+    struct iisp_header __far *next_handler;
+    if (handler->jump_to_start != 0x10EB
+        || handler->signature != 0x424B
+        || handler->jump_to_reset[0] != 0xEB) {
+      return false;
+    }
+    next_handler = handler->next_handler;
+    if (FP_SEG(next_handler) == our_seg) {
+      handler->next_handler = next_handler->next_handler;
+      return true;
+    }
+    handler = next_handler;
+  }
+}
+
+
 static bool setup_emm386() {
   unsigned char version[2];
-  int handle, err;
+  int handle, err, v;
 
   err = _dos_open("EMMXXXX0", O_RDONLY, &handle);
   if (err) {
@@ -142,35 +184,92 @@ static bool setup_emm386() {
     return false;
   }
 
-  return emm386_virtualize_io(0x388, 0x389, 2, &emm386_glue, (int)&resident_end) == 0;
+  err = emm386_virtualize_io(0x388, 0x389, 2, &emm386_table, (int)&resident_end, &v);
+  if (err) {
+    return false;
+  }
+  config.emm_type = EMM_EMM386;
+  config.emm386_virt_io_handle = v;
+  return true;
 }
 
 
-static bool setup_qemm() {
-  int handle, err, version;
-  void __far *qpi;
-
-  err = _dos_open("QEMM386$", O_RDONLY, &handle);
+static bool shutdown_emm386(struct config __far *cfg) {
+  int err;
+  err = emm386_unvirtualize_io(cfg->emm386_virt_io_handle);
   if (err) {
     return false;
+  }
+  cfg->emm_type = EMM_NONE;
+  return true;
+}
+
+
+static void __far *get_qpi_entry_point() {
+  int handle, err;
+  void __far *qpi;
+  err = _dos_open("QEMM386$", O_RDONLY, &handle);
+  if (err) {
+    return 0;
   }
   err = qemm_get_qpi_entry_point(handle, &qpi);
   _dos_close(handle);
   if (err) {
+    return 0;
+  }
+  return qpi;
+}
+
+
+static bool setup_qemm() {
+  void __far *qpi;
+  int version;
+
+  qpi = get_qpi_entry_point();
+  if (!qpi) {
     return false;
   }
   version = qpi_get_version(&qpi);
   if (version < 0x0703) {
     return false;
   }
+
   if (qpi_get_port_trap(&qpi, 0x388) || qpi_get_port_trap(&qpi, 0x389)) {
     cputs("Some other program is already intercepting Adlib I/O\r\n");
     exit(1);
   }
   qpi_set_port_trap(&qpi, 0x388);
   qpi_set_port_trap(&qpi, 0x389);
-  qemm_chain = qpi_get_io_callback(&qpi);
-  qpi_set_io_callback(&qpi, qemm_glue);
+
+  qemm_handler.next_handler = qpi_get_io_callback(&qpi);
+  qpi_set_io_callback(&qpi, &qemm_handler);
+
+  config.emm_type = EMM_QEMM;
+  return true;
+}
+
+
+static bool shutdown_qemm(struct config __far *cfg) {
+  void __far *qpi;
+  struct iisp_header __far *callback;
+
+  qpi = get_qpi_entry_point();
+  if (!qpi) {
+    return false;
+  }
+
+  qpi_clear_port_trap(&qpi, 0x388);
+  qpi_clear_port_trap(&qpi, 0x389);
+
+  callback = qpi_get_io_callback(&qpi);
+  if (FP_SEG(callback) == FP_SEG(cfg)) {
+    qpi_set_io_callback(&qpi, callback->next_handler);
+  } else {
+    if (!amis_unhook(callback, FP_SEG(cfg))) {
+      return false;
+    }
+  }
+  cfg->emm_type = EMM_NONE;
   return true;
 }
 
@@ -200,6 +299,30 @@ static void check_jemm(char bios_id) {
 }
 
 
+static bool uninstall(struct config __far *cfg) {
+  struct iisp_header __far *current_amis_handler;
+
+  if (cfg->emm_type == EMM_EMM386 && !shutdown_emm386(cfg)) {
+    return false;
+  }
+  else if (cfg->emm_type == EMM_QEMM && !shutdown_qemm(cfg)) {
+    return false;
+  }
+
+  current_amis_handler = (struct iisp_header __far *) _dos_getvect(0x2D);
+  if (FP_SEG(current_amis_handler) == FP_SEG(cfg)) {
+    _dos_setvect(0x2D, current_amis_handler->next_handler);
+  } else {
+    if (!amis_unhook(current_amis_handler, FP_SEG(cfg))) {
+      return false;
+    }
+  }
+
+  _dos_freemem(cfg->psp);
+  return true;
+}
+
+
 static short get_lpt_port(int i) {
   return *(short __far *)MK_FP(0x40, 6 + 2*i);
 }
@@ -207,8 +330,7 @@ static short get_lpt_port(int i) {
 
 static void usage(void) {
   cputs("Usage: ADLIPT LPT1|LPT2|LPT3\r\n"
-        "       ADLIPT DISABLE\r\n"
-        "       ADLIPT ENABLE\r\n");
+        "       ADLIPT UNLOAD\r\n");
   exit(1);
 }
 
@@ -282,7 +404,18 @@ int main(void) {
       else if (stricmp(arg, "disable") == 0) {
         cfg->enabled = false;
       }
-      else {
+      else if (stricmp(arg, "unload") == 0) {
+        if (!installed) {
+          cputs("ADLiPT is not loaded.\r\n");
+          exit(1);
+        } else if (uninstall(cfg)) {
+          cputs("ADLiPT is now unloaded from memory.\r\n");
+          exit(0);
+        } else {
+          cputs("Could not unload ADLiPT.\r\n");
+          exit(1);
+        }
+      } else {
         usage();
       }
     }
@@ -310,9 +443,11 @@ int main(void) {
     }
     status(cfg);
 
+    cfg->psp = _psp;
+
     /* hook AMIS interrupt */
-    amis_chain = _dos_getvect(0x2D);
-    _dos_setvect(0x2D, (void (__interrupt *)()) amis_hook);
+    amis_handler.next_handler = _dos_getvect(0x2D);
+    _dos_setvect(0x2D, (void (__interrupt *)()) &amis_handler);
 
     /* free environment block */
     env_seg = MK_FP(_psp, 0x2C);

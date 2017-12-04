@@ -2,12 +2,10 @@
 
         public _amis_header
         public _amis_id
-        public _amis_chain
-        public amis_hook_
+        public _amis_handler
 
-        public _emm386_glue
-        public qemm_glue_
-        public _qemm_chain
+        public _emm386_table
+        public _qemm_handler
 
         extern emulate_adlib_io_ : proc
 
@@ -35,9 +33,12 @@ _amis_header:
 
 ;;; Configuration immediately follows AMIS header
 _config:
-enable:   db 1
-lpt_port: dw 0
-bios_id:  dw -1
+enable: db 1
+        dw 0
+        dw -1
+        dw 0
+        dw 0
+        dw 0
 
 
 ;;; IBM Interrupt Sharing Protocol header
@@ -51,12 +52,12 @@ chain:  dd 0
         endm
 
 
-amis_hook_:
-        iisp_header _amis_chain
+_amis_handler:
+        iisp_header amis_next_handler
         cmp_ah
 _amis_id: db 0xFF
         je @@amis_match
-        jmp dword ptr cs:_amis_chain
+        jmp dword ptr cs:amis_next_handler
 @@amis_match:
         test al, al
         je @@amis_install_check
@@ -77,7 +78,7 @@ _amis_id: db 0xFF
 
 amis_hook_table:
         db 0x2D
-        dw amis_hook_
+        dw _amis_handler
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -85,7 +86,7 @@ amis_hook_table:
 
 
         even
-_emm386_glue:
+_emm386_table:
         dw 0x0388, emm386_handler
         dw 0x0389, emm386_handler
 
@@ -108,7 +109,8 @@ _retf:  retf
 ;;; QEMM GLUE CODE
 
 
-qemm_glue_:
+_qemm_handler:
+        iisp_header qemm_next_handler
         cmp dx, 0x0388
         jl @@qemm_ignore
         cmp dx, 0x0389
@@ -123,8 +125,7 @@ qemm_glue_:
         pop ds
         retf
 @@qemm_ignore:
-        jmp_far
-_qemm_chain: dw 0, 0
+        jmp dword ptr cs:qemm_next_handler
 
 
         RESIDENT ends
