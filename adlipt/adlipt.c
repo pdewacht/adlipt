@@ -336,10 +336,7 @@ static void usage(void) {
 
 
 static void status(struct config __far *cfg) {
-  cputs("  Status: ");
-  cputs(cfg->enabled ? "Enabled" : "Disabled");
-  cputs("\r\n");
-
+  cputs("  Status: Loaded\r\n");
   cputs("  Port: LPT");
   putch('1' + cfg->bios_id);
   cputs("\r\n");
@@ -397,12 +394,6 @@ int main(void) {
         }
         cfg->lpt_port = port;
         cfg->bios_id = i - 1;
-      }
-      else if (stricmp(arg, "enable") == 0) {
-        cfg->enabled = true;
-      }
-      else if (stricmp(arg, "disable") == 0) {
-        cfg->enabled = false;
       }
       else if (stricmp(arg, "unload") == 0) {
         if (!installed) {

@@ -22,7 +22,6 @@ enum emm_type {
 };
 
 _Packed struct config {
-  char enabled;
   int lpt_port;
   int bios_id;
   int psp;

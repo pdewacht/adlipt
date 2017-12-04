@@ -33,7 +33,6 @@ _amis_header:
 
 ;;; Configuration immediately follows AMIS header
 _config:
-enable: db 1
         dw 0
         dw -1
         dw 0
@@ -91,17 +90,12 @@ _emm386_table:
         dw 0x0389, emm386_handler
 
 emm386_handler:
-        cmp byte ptr cs:[enable], 0
-        je @@emm_not_enabled
         push cx
         push dx
         call emulate_adlib_io_
         pop dx
         pop cx
         clc
-        retf
-@@emm_not_enabled:
-        stc
 _retf:  retf
 
 
@@ -115,8 +109,6 @@ _qemm_handler:
         jl @@qemm_ignore
         cmp dx, 0x0389
         jg @@qemm_ignore
-        cmp byte ptr cs:[enable], 0
-        jz @@qemm_ignore
         and cx, 4
         push ds
         push cs
