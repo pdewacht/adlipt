@@ -4,6 +4,9 @@
 #include "resident.h"
 
 
+struct config RESIDENT config;
+
+
 /* I/O port access */
 
 extern unsigned inp(unsigned port);

@@ -1,5 +1,3 @@
-        public _config
-
         public _amis_header
         public _amis_id
         public _amis_handler
@@ -7,15 +5,12 @@
         public _emm386_table
         public _qemm_handler
 
+        extern _config : near
         extern emulate_adlib_io_ : proc
 
 
 cmp_ah  macro
         db 0x80, 0xFC
-        endm
-
-jmp_far macro
-        db 0xEA
         endm
 
 
@@ -30,14 +25,8 @@ _amis_header:
         db 'SERDACO '           ;8 bytes: manufacturer
         db 'ADLIPT  '           ;8 bytes: product
         db 0                    ;no description
-
-;;; Configuration immediately follows AMIS header
-_config:
-        dw 0
-        dw -1
-        dw 0
-        dw 0
-        dw 0
+;;; Configuration pointer immediately follows AMIS header
+        dw _config
 
 
 ;;; IBM Interrupt Sharing Protocol header

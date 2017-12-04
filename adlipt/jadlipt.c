@@ -26,7 +26,6 @@ struct vxd_desc_block ddb = {
   sizeof(ddb),  /* Size */
 };
 
-struct config RESIDENT config = { 1 };
 
 __declspec(naked) static void iohandler() {
   // eax: data

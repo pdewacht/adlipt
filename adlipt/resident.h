@@ -22,11 +22,13 @@ enum emm_type {
 };
 
 _Packed struct config {
-  int lpt_port;
-  int bios_id;
-  int psp;
+  unsigned lpt_port;
+  char bios_id;
+#ifdef _M_I86
+  unsigned psp;
   enum emm_type emm_type;
   int emm386_virt_io_handle;
+#endif
 };
 
 

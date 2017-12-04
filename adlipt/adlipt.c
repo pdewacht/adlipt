@@ -368,7 +368,8 @@ int main(void) {
         exit(1);
       }
       installed = true;
-      cfg = (struct config __far *)(info.signature + _fstrlen(info.signature) + 1);
+      cfg = MK_FP(FP_SEG(info.signature),
+                  *(short __far *)(info.signature + _fstrlen(info.signature) + 1));
       break;
     }
   }
