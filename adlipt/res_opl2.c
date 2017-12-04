@@ -103,7 +103,7 @@ unsigned emulate_adlib_io(int port, int is_write, unsigned ax)
       if ((timer_reg & 0xA2) == 2) {
         s |= 0xA0;
       }
-      ax = (ax & 0xFF00) | s;
+      ax = (ax & ~0xFF) | s;
     }
 
     /* Do a dummy I/O action for timing */
