@@ -46,7 +46,7 @@ extern struct iisp_header RESIDENT qemm_handler;
 extern char RESIDENT resident_end[];
 
 
-unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax);
+unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax, char __far *next_opcode);
 unsigned emulate_adlib_data_io(int port, int is_write, unsigned ax);
 #ifdef _M_I86
 #pragma aux emulate_adlib_address_io parm [dx] [cx] [ax] value [ax] modify exact [ax]

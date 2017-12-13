@@ -132,14 +132,14 @@ static char timer_reg;
     delay(port);                                \
   } while (0)
 
-unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax) {
+unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax, char __far *next_opcode) {
   if (is_write) {
     address = ax;
-    DO_LPT(ax, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE, inp);
+    DO_LPT(ax, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE, address_delay);
     return ax;
   }
   else {
-    char s = STATUS_LOW_BITS;
+    char s = 0;
     char t = timer_reg;
     if ((t & 0xC1) == 1) {
       s |= 0xC0;
@@ -147,7 +147,12 @@ unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax) {
     if ((t & 0xA2) == 2) {
       s |= 0xA0;
     }
-    return (ax & 0xFF00) | s;
+
+    if (s == 0 && next_opcode != 0 && next_opcode[-1] == 0xEC) {
+      next_opcode[-1] = 0x90;
+    }
+
+    return (ax & 0xFF00) | s | STATUS_LOW_BITS;
   }
 }
 
@@ -156,7 +161,7 @@ unsigned emulate_adlib_data_io(int port, int is_write, unsigned ax) {
     if (address == 4) {
       timer_reg = ax;
     }
-    DO_LPT(ax, PP_INIT | PP_NOT_SELECT, inp);
+    DO_LPT(ax, PP_INIT | PP_NOT_SELECT, data_delay);
   }
   return ax;
 }

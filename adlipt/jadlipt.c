@@ -35,6 +35,7 @@ __declspec(naked) static void address_io_handler() {
   // ebp: Client_Reg_Struct
   __asm {
     test ecx, not 4
+    push 0
     jz emulate_adlib_address_io
     // VMMJmp Simulate_IO
     int 0x20

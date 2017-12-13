@@ -1,3 +1,5 @@
+	.386
+
         public _amis_header
         public _amis_id
         public _amis_handler
@@ -80,6 +82,8 @@ _emm386_table:
         dw 0x0389, emm386_data_handler
 
 emm386_address_handler:
+        push 0xD8
+        push [bp+8]
         call emulate_adlib_address_io_
         clc
 _retf:  retf
@@ -113,6 +117,8 @@ _qemm_handler:
         push ds
         push cs
         pop ds
+        push 0
+        push 0
         call emulate_adlib_address_io_
         pop ds
         retf
