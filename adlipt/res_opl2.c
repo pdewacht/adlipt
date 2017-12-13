@@ -9,11 +9,68 @@ struct config RESIDENT config;
 
 /* I/O port access */
 
-extern unsigned inp(unsigned port);
-extern unsigned outp(unsigned port, unsigned value);
-#pragma intrinsic(inp, outp)
-#pragma aux inp modify nomemory;
-#pragma aux outp modify nomemory;
+static void outp(unsigned port, char value);
+#pragma aux outp =                              \
+  "out dx, al"                                  \
+  parm [dx] [al]                                \
+  modify exact [ax]
+
+static char inp(unsigned port);
+#pragma aux inp =                               \
+  "in al, dx"                                   \
+  parm [dx]                                     \
+  modify exact [ax]
+
+static void address_delay(unsigned port);
+#pragma aux address_delay =                     \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  parm [dx]                                     \
+  modify exact [ax]
+
+static void data_delay(unsigned port);
+#pragma aux data_delay =                        \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  "in al, dx"                                   \
+  parm [dx]                                     \
+  modify exact [ax]
 
 #define PP_NOT_STROBE   0x1
 #define PP_NOT_AUTOFD   0x2
@@ -63,62 +120,43 @@ static char timer_reg;
 
 #define STATUS_LOW_BITS 0x06
 
-unsigned emulate_adlib_io(int port, int is_write, unsigned ax)
-{
+#define DO_LPT(value, flags, delay)             \
+  do {                                          \
+    unsigned port = config.lpt_port;            \
+    int i;                                      \
+    outp(port, (value));                        \
+    port += 2;                                  \
+    outp(port, (flags));                        \
+    outp(port, (flags) ^ PP_INIT);              \
+    outp(port, (flags));                        \
+    delay(port);                                \
+  } while (0)
+
+unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax) {
   if (is_write) {
-    char value = ax;
-    char c = PP_INIT | PP_NOT_SELECT;
-
-    if ((char)port == 0x88) {
-      /* Write to address register */
-      c |= PP_NOT_STROBE;
-      /* Remember the address */
-      address = value;
-    }
-    else {
-      /* Write to data port */
-      /* Remember the timer setting */
-      if (address == 4) {
-        timer_reg = value;
-      }
-    }
-
-    outp(config.lpt_port, value);  /* Prepare data */
-    outp(config.lpt_port + 2, c);  /* Select address */
-    c ^= PP_INIT;
-    outp(config.lpt_port + 2, c);  /* Begin write */
-    c ^= PP_INIT;
-    outp(config.lpt_port + 2, c);  /* Complete write */
+    address = ax;
+    DO_LPT(ax, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE, inp);
+    return ax;
   }
   else {
-    /* Read. */
-
-    if ((char)port == 0x88) {
-      /*
-       * Emulate the timers. We let them expire instantaneously.
-       * This seems good enough for the standard Adlib detection
-       * routines.
-       */
-      char s = STATUS_LOW_BITS;
-      if ((timer_reg & 0xC1) == 1) {
-        s |= 0xC0;
-      }
-      if ((timer_reg & 0xA2) == 2) {
-        s |= 0xA0;
-      }
-      ax = (ax & ~0xFF) | s;
+    char s = STATUS_LOW_BITS;
+    char t = timer_reg;
+    if ((t & 0xC1) == 1) {
+      s |= 0xC0;
     }
-
-    /* Do a dummy I/O action for timing */
-    (volatile) inp(config.lpt_port + 2);
+    if ((t & 0xA2) == 2) {
+      s |= 0xA0;
+    }
+    return (ax & 0xFF00) | s;
   }
+}
 
-  #ifdef DEBUG
-  writechar(is_write ? 'W' : 'R');
-  writechar((char)port == 0x88 ? 'a' : 'd');
-  write2hex(ax);
-  writeln();
-  #endif
-
+unsigned emulate_adlib_data_io(int port, int is_write, unsigned ax) {
+  if (is_write) {
+    if (address == 4) {
+      timer_reg = ax;
+    }
+    DO_LPT(ax, PP_INIT | PP_NOT_SELECT, inp);
+  }
   return ax;
 }

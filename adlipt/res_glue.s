@@ -6,7 +6,8 @@
         public _qemm_handler
 
         extern _config : near
-        extern emulate_adlib_io_ : proc
+        extern emulate_adlib_address_io_ : proc
+        extern emulate_adlib_data_io_ : proc
 
 
 cmp_ah  macro
@@ -75,14 +76,18 @@ amis_hook_table:
 
         even
 _emm386_table:
-        dw 0x0388, emm386_handler
-        dw 0x0389, emm386_handler
+        dw 0x0388, emm386_address_handler
+        dw 0x0389, emm386_data_handler
 
-emm386_handler:
-        call emulate_adlib_io_
+emm386_address_handler:
+        call emulate_adlib_address_io_
         clc
 _retf:  retf
 
+emm386_data_handler:
+        call emulate_adlib_data_io_
+        clc
+        retf
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; QEMM GLUE CODE
@@ -92,13 +97,23 @@ _qemm_handler:
         iisp_header qemm_next_handler
         cmp dx, 0x0388
         jl @@qemm_ignore
+        jz @@qemm_address_handler
         cmp dx, 0x0389
-        jg @@qemm_ignore
+        jnz @@qemm_ignore
+@@qemm_data_handler:
         and cx, 4
         push ds
         push cs
         pop ds
-        call emulate_adlib_io_
+        call emulate_adlib_data_io_
+        pop ds
+        retf
+@@qemm_address_handler:
+        and cx, 4
+        push ds
+        push cs
+        pop ds
+        call emulate_adlib_address_io_
         pop ds
         retf
 @@qemm_ignore:

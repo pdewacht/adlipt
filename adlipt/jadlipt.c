@@ -27,7 +27,7 @@ struct vxd_desc_block ddb = {
 };
 
 
-__declspec(naked) static void iohandler() {
+__declspec(naked) static void address_io_handler() {
   // eax: data
   // ebx: VM handle
   // ecx: IO type
@@ -35,7 +35,23 @@ __declspec(naked) static void iohandler() {
   // ebp: Client_Reg_Struct
   __asm {
     test ecx, not 4
-    jz emulate_adlib_io
+    jz emulate_adlib_address_io
+    // VMMJmp Simulate_IO
+    int 0x20
+    dd 0x1001D or 0x8000
+  }
+}
+
+
+__declspec(naked) static void data_io_handler() {
+  // eax: data
+  // ebx: VM handle
+  // ecx: IO type
+  // edx: port
+  // ebp: Client_Reg_Struct
+  __asm {
+    test ecx, not 4
+    jz emulate_adlib_data_io
     // VMMJmp Simulate_IO
     int 0x20
     dd 0x1001D or 0x8000
@@ -103,10 +119,10 @@ static int install(char *cmd_line) {
   config.lpt_port = port;
   config.bios_id = param;
 
-  if (Install_IO_Handler(0x388, iohandler) != 0) {
+  if (Install_IO_Handler(0x388, address_io_handler) != 0) {
     goto fail1;
   }
-  if (Install_IO_Handler(0x389, iohandler) != 0) {
+  if (Install_IO_Handler(0x389, data_io_handler) != 0) {
     goto fail2;
   }
   return 1;
