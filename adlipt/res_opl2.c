@@ -120,6 +120,9 @@ static char timer_reg;
 
 #define STATUS_LOW_BITS 0x06
 
+static unsigned emulate_read(unsigned ax, codeptr next_opcode);
+#pragma aux emulate_read parm [ax] [bx dx] modify exact [ax bx cx dx]
+
 #define DO_LPT(value, flags, delay)             \
   do {                                          \
     unsigned port = config.lpt_port;            \
@@ -129,39 +132,78 @@ static char timer_reg;
     outp(port, (flags));                        \
     outp(port, (flags) ^ PP_INIT);              \
     outp(port, (flags));                        \
-    delay(port);                                \
+    if (config.enable_patching) {               \
+      delay(port);                              \
+    }                                           \
   } while (0)
 
-unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax, char __far *next_opcode) {
-  if (is_write) {
-    address = ax;
-    DO_LPT(ax, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE, address_delay);
-    return ax;
+unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax, codeptr next_opcode) {
+  if (!is_write) {
+    return emulate_read(ax, next_opcode);
   }
-  else {
-    char s = 0;
-    char t = timer_reg;
-    if ((t & 0xC1) == 1) {
-      s |= 0xC0;
-    }
-    if ((t & 0xA2) == 2) {
-      s |= 0xA0;
-    }
-
-    if (s == 0 && next_opcode != 0 && next_opcode[-1] == 0xEC) {
-      next_opcode[-1] = 0x90;
-    }
-
-    return (ax & 0xFF00) | s | STATUS_LOW_BITS;
-  }
+  address = ax;
+  DO_LPT(ax, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE, address_delay);
+  return ax;
 }
 
-unsigned emulate_adlib_data_io(int port, int is_write, unsigned ax) {
-  if (is_write) {
-    if (address == 4) {
-      timer_reg = ax;
-    }
-    DO_LPT(ax, PP_INIT | PP_NOT_SELECT, data_delay);
+unsigned emulate_adlib_data_io(int port, int is_write, unsigned ax, codeptr next_opcode) {
+  if (!is_write) {
+    return emulate_read(ax, next_opcode);
   }
+  if (address == 4) {
+    timer_reg = ax;
+  }
+  DO_LPT(ax, PP_INIT | PP_NOT_SELECT, data_delay);
+  return ax;
+}
+
+static unsigned emulate_read(unsigned ax, codeptr next_opcode) {
+  /*
+   * Emulate the timers. We let them expire instantaneously.
+   * So far I haven't found any software that uses the timers for
+   * anything other than a detection routine.
+   */
+  ax = ax & ~0xFF;
+  if ((timer_reg & 0xC1) == 1) {
+    ax |= 0xC0;
+  }
+  if ((timer_reg & 0xA2) == 2) {
+    ax |= 0xA0;
+  }
+  ax |= STATUS_LOW_BITS;
+
+  if (config.enable_patching) {
+    /*
+     * Typical Adlib routines use dummy IN AL,DX instructions to
+     * provide a delay. This hurts because each of these INs generates
+     * a fault and especially on slower CPUs the delay will be much
+     * much longer than intended.
+     *
+     * We can work around this by replacing the INs with NOPs and
+     * compensate by adding delay code to our OUT emulation (which
+     * will not fault).
+     *
+     * We don't want to break Adlib detection routines though, there
+     * the INs are actually meaningful. So only patch if a register is
+     * selected that wouldn't be used in such a routine.
+     */
+    if (address >= 0x20) {
+      codeptr opc = next_opcode - 1;
+      if (*opc == 0xEC) {
+        *opc = 0x90;
+      }
+    }
+  }
+
+  if (config.cpu_type >= 5) {
+    /*
+     * Because INs are used for timing, the emulation must be at least
+     * as slow as the real thing. Assume that for 386 and 486 CPUs
+     * that will always be the case. On Pentium systems we do an
+     * explicit I/O to be sure.
+     */
+    (volatile) inp(config.lpt_port);
+  }
+
   return ax;
 }

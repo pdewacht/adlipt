@@ -24,6 +24,8 @@ enum emm_type {
 _Packed struct config {
   unsigned lpt_port;
   char bios_id;
+  char cpu_type;
+  char enable_patching;
 #ifdef _M_I86
   unsigned psp;
   enum emm_type emm_type;
@@ -46,8 +48,14 @@ extern struct iisp_header RESIDENT qemm_handler;
 extern char RESIDENT resident_end[];
 
 
-unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax, char __far *next_opcode);
-unsigned emulate_adlib_data_io(int port, int is_write, unsigned ax);
+#ifdef _M_I86
+typedef char __far *codeptr;
+#else
+typedef char *codeptr;
+#endif
+
+unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax, codeptr next_opcode);
+unsigned emulate_adlib_data_io(int port, int is_write, unsigned ax, codeptr next_opcode);
 #ifdef _M_I86
 #pragma aux emulate_adlib_address_io parm [dx] [cx] [ax] value [ax] modify exact [ax]
 #pragma aux emulate_adlib_data_io parm [dx] [cx] [ax] modify exact [ax]

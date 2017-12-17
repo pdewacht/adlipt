@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cputype.h"
 #include "resident.h"
 
 
@@ -184,6 +185,13 @@ static bool setup_emm386() {
     return false;
   }
 
+  if (!(version[0] == 4 && version[1] == 48)
+      && !(version[0] == 4 && version[1] == 49)) {
+    cprintf("You have an EMM386 version I don't know about: version %d.%d\r\n"
+            "Please report your experiences.\r\n\r\n",
+            version[0], version[1]);
+  }
+
   err = emm386_virtualize_io(0x388, 0x389, 2, &emm386_table, (int)&resident_end, &v);
   if (err) {
     return false;
@@ -336,9 +344,21 @@ static void usage(void) {
 
 
 static void status(struct config __far *cfg) {
-  cputs("  Status: Loaded\r\n");
+  cputs("  Status: loaded\r\n");
   cputs("  Port: LPT");
   putch('1' + cfg->bios_id);
+  cputs("\r\n");
+
+  cputs("  CPU: ");
+  cputs(cfg->cpu_type == 3 ? "386" :
+        cfg->cpu_type == 4 ? "486" :
+        "Pentium or later");
+  cputs("\r\n");
+
+  cputs("  Patching: ");
+  cputs(cfg->emm_type == EMM_QEMM ? "not supported with QEMM" :
+        cfg->enable_patching ? "enabled" :
+        "disabled");
   cputs("\r\n");
 }
 
@@ -352,6 +372,14 @@ int main(void) {
 
   cputs("ADLiPT " XSTR(VERSION_MAJOR) "." XSTR(VERSION_MINOR)
         "  github.com/pdewacht/adlipt\r\n\r\n");
+
+  config.cpu_type = cpu_type();
+  config.enable_patching = true /* (config.cpu_type == 3) */;
+
+  if (config.cpu_type < 3) {
+    cputs("This TSR requires a 386 or later CPU.\r\n");
+    return 1;
+  }
 
   /* Check if the TSR is already in memory */
   /* Also look for an unused AMIS multiplex id */
@@ -396,6 +424,18 @@ int main(void) {
         cfg->lpt_port = port;
         cfg->bios_id = i - 1;
       }
+      else if (stricmp(arg, "patch") == 0) {
+        cfg->enable_patching = true;
+      }
+      else if (stricmp(arg, "nopatch") == 0) {
+        cfg->enable_patching = false;
+      }
+      else if (stricmp(arg, "forcedelay") == 0) {
+        cfg->cpu_type = 100;
+      }
+      else if (stricmp(arg, "noforcedelay") == 0) {
+        cfg->cpu_type = config.cpu_type;
+      }
       else if (stricmp(arg, "unload") == 0) {
         if (!installed) {
           cputs("ADLiPT is not loaded.\r\n");
@@ -413,36 +453,39 @@ int main(void) {
     }
   }
 
-  if (installed) {
-    status(cfg);
-  }
-  else {
-    int __far *env_seg;
-
+  if (!installed) {
     if (!cfg->lpt_port) {
       usage();
       return 1;
     }
+    cfg->psp = _psp;
+
     if (!found_unused_amis_id) {
       cputs("Error: No unused AMIS multiplex id found\n");
       return 1;
     }
+
     check_jemm(cfg->bios_id);
     if (!setup_qemm() && !setup_emm386()) {
       cputs("Error: no supported memory manager found\r\n"
             "Requires EMM386 4.46+, QEMM 7.03+ or JEMM\r\n");
       return 1;
     }
-    status(cfg);
-
-    cfg->psp = _psp;
 
     /* hook AMIS interrupt */
     amis_handler.next_handler = _dos_getvect(0x2D);
     _dos_setvect(0x2D, (void (__interrupt *)()) &amis_handler);
+  }
 
+  if (cfg->emm_type != EMM_EMM386) {
+    cfg->enable_patching = false;
+  }
+
+  status(cfg);
+
+  if (!installed) {
     /* free environment block */
-    env_seg = MK_FP(_psp, 0x2C);
+    int __far *env_seg = MK_FP(_psp, 0x2C);
     _dos_freemem(*env_seg);
     *env_seg = 0;
 

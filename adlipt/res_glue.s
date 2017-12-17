@@ -82,13 +82,15 @@ _emm386_table:
         dw 0x0389, emm386_data_handler
 
 emm386_address_handler:
-        push 0xD8
-        push [bp+8]
+        push 0xD8               ; EMM386 selector for user code segment
+        push [bp+8]             ; user IP register
         call emulate_adlib_address_io_
         clc
 _retf:  retf
 
 emm386_data_handler:
+        push 0xD8
+        push [bp+8]
         call emulate_adlib_data_io_
         clc
         retf
@@ -109,6 +111,7 @@ _qemm_handler:
         push ds
         push cs
         pop ds
+        pushd 0
         call emulate_adlib_data_io_
         pop ds
         retf
@@ -117,8 +120,7 @@ _qemm_handler:
         push ds
         push cs
         pop ds
-        push 0
-        push 0
+        pushd 0
         call emulate_adlib_address_io_
         pop ds
         retf
