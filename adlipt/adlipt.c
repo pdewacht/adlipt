@@ -349,7 +349,7 @@ static void status(struct config __far *cfg) {
   putch('1' + cfg->bios_id);
   cputs("\r\n");
 
-  cputs("  CPU: ");
+  cputs("  Detected CPU: ");
   cputs(cfg->cpu_type == 3 ? "386" :
         cfg->cpu_type == 4 ? "486" :
         "Pentium or later");

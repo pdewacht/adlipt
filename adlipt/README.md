@@ -23,14 +23,9 @@ assuming the OPL2LPT board is plugged into LPT1. It will use about
 half a kilobyte of RAM. It can be loaded into high memory using the
 DOS `LH` command.
 
-Once loaded it cannot be unloaded, but it can be temporarily disabled
-with the command:
+The TSR can be unloaded with the command:
 
-    ADLIPT DISABLE
-
-Re-enable with:
-
-    ADLIPT ENABLE
+    ADLIPT UNLOAD
 
 ### JEMM
 
