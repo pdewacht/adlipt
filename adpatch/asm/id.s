@@ -1,5 +1,11 @@
 ; arguments in [bp+6], [bp+8]
+; id Software variation
 ; disables interrupts for most of the routine
+; (I don't know why, it might be unnecessary...)
+
+        %if __BITS__ != 16
+        %error This file is intended for 16-bit code
+        %endif
 
         pushf
         cli

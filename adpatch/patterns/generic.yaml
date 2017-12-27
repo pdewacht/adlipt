@@ -1,0 +1,57 @@
+---
+name: Generic Adlib output (bp variant)
+find: |
+  BEGIN
+    mov dx, 0x388
+  ALT
+    mov dx, [ANYWORD]
+  END
+
+  BEGIN
+    mov ax, [bp+0x4]
+  ALT
+    mov al, [bp+0x4]
+  END
+
+  out dx, al
+
+  BEGIN
+    in al, dx
+  REPEAT
+
+  BEGIN
+    mov dx, 0x389
+  ALT
+    mov dx, [ANYWORD]
+  ALT
+    inc dx
+  END
+
+  BEGIN
+    mov ax, [bp+0x6]
+  ALT
+    mov al, [bp+0x6]
+  END
+
+  out dx, al
+
+  BEGIN
+    BEGIN
+      mov dx, 0x388
+    ALT
+      mov dx, [ANYWORD]
+    ALT
+      dec dx
+    END
+  OPTION
+
+  BEGIN
+    in al, dx
+  REPEAT
+
+replace: |
+  push cx
+  %define ARG1 [bp+4]
+  %define ARG2 [bp+6]
+  %include 'standard.s'
+  pop cx

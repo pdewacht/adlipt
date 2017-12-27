@@ -1,8 +1,6 @@
 ---
 name: Softdisk/Dangerous Dave Adlib output
 find: |
-  push bp
-  db 0x8B, 0xEC  ;mov bp,sp
   pushf
   cli
   mov dx, 0x388
@@ -30,13 +28,10 @@ find: |
     inc sp
     inc sp
   END
-  pop bp
 replace: |
   pushf
   cli
-  ; sp shenanigans should be safe with cli
-  ; I hope
-  add sp, 6
-  %include 'compact_st.s'
-  sub sp, 10
+  %define ARG1 [bp+6]
+  %define ARG2 [bp+8]
+  %include 'compact.s'
   popf

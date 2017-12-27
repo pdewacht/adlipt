@@ -32,7 +32,7 @@ replace: |
   push cx
   push cx
   push bx
-  %include 'compact_st.s'
+  %include 'standard_st.s'
   pop cx
 ---
 name: Sierra SCI Adlib output (variant 2)
@@ -54,7 +54,7 @@ replace: |
   push cx
   push cx
   push bx
-  %include 'compact_st.s'
+  %include 'standard_st.s'
   pop cx
 ---
 name: Sierra SCI Adlib output (variant 3)
@@ -75,7 +75,7 @@ find: |
 replace: |
   push cx
   push bx
-  %include 'compact_st.s'
+  %include 'standard_st.s'
 ---
 name: Sierra SCI Adlib output (32-bit)
 find: |
@@ -96,6 +96,8 @@ find: |
   loop L1
 replace: |
   bits 32
-  push cx
-  push bx
-  %include 'compact_st.s'
+  mov al, bl
+  mov ah, cl
+  %define ARG1 al
+  %define ARG2 ah
+  %include 'standard32.s'

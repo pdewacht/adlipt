@@ -1,24 +1,27 @@
 ; receives input on stack
 ; modifies ax, cx, dx, sp
 ; does not modify the stack data (softdisk relies on this!)
-; 28 bytes
+; 27 bytes
 
-        mov cl, 13
+        %if __BITS__ != 16
+        %error This file is intended for 16-bit code
+        %endif
+
+        stc
 L1:
         pop ax
         mov dx, PORT
         out dx, al
+        mov al, 12
+        adc al, 0               ; carry=1 only on first iteration
         inc dx
         inc dx
-        mov al, cl
         out dx, al
         sub al, 4
         out dx, al
-        add al, 4
+        add al, 4               ; odd parity only on first iteration
         out dx, al
-        mov ah, 0x22
+        mov cx, 35
 L2:     in al, dx
-        dec ah
-        jnz L2
-        dec cx
-        jpe L1
+        loop L2
+        jpo L1
