@@ -31,7 +31,9 @@
  * Hacked into a OPL2LPT test program by pdewacht@gmail.com.
  */
 
-#include <conio.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <linux/ppdev.h>
 #include "OPL2.h"
 
 #define PP_NOT_STROBE   0x1
@@ -64,14 +66,14 @@ const byte OPL2::instrumentBaseRegs[11] = {
 
 
 OPL2::OPL2() {
-	lpt_base = 0;
+	lpt_base = -1;
 }
 
 
 /**
  * Initialize the YM3812.
  */
-void OPL2::init(short lpt_base) {
+void OPL2::init(int lpt_base) {
 	this->lpt_base = lpt_base;
 	reset();
 }
@@ -81,39 +83,29 @@ void OPL2::init(short lpt_base) {
  * Send the given byte of data to the given register of the OPL2 chip.
  */
 void OPL2::write(byte reg, byte data) {
-#ifdef ADLIB
+	static byte b[] = {
+		PP_NOT_SELECT | PP_NOT_STROBE | PP_INIT,
+		PP_NOT_SELECT | PP_NOT_STROBE,
+		PP_NOT_SELECT | PP_NOT_STROBE | PP_INIT,
 
-	outp(0x388, reg);
-	for (int i = 0; i < 6; i++) {
-		(volatile) inp(0x388);
-	}
-	outp(0x389, data);
-	for (int i = 0; i < 35; i++) {
-		(volatile) inp(0x388);
-	}
-
-#else
-	if (!lpt_base) {
+		PP_NOT_SELECT | PP_INIT,
+		PP_NOT_SELECT,
+		PP_NOT_SELECT | PP_INIT
+	};
+	if (lpt_base == -1) {
 		return;
 	}
-	int lpt_data = lpt_base;
-	int lpt_ctrl = lpt_base + 2;
-	outp(lpt_data, reg);
-	outp(lpt_ctrl, PP_NOT_SELECT | PP_NOT_STROBE | PP_INIT);
-	outp(lpt_ctrl, PP_NOT_SELECT | PP_NOT_STROBE);
-	outp(lpt_ctrl, PP_NOT_SELECT | PP_NOT_STROBE | PP_INIT);
-	for (int i = 0; i < 6; i++) {
-		(volatile) inp(lpt_ctrl);
-	}
-	outp(lpt_data, data);
-	outp(lpt_ctrl, PP_NOT_SELECT | PP_INIT);
-	outp(lpt_ctrl, PP_NOT_SELECT);
-	outp(lpt_ctrl, PP_NOT_SELECT | PP_INIT);
-	for (int i = 0; i < 35; i++) {
-		(volatile) inp(lpt_ctrl);
-	}
+	ioctl(lpt_base, PPWDATA, &reg);
+	ioctl(lpt_base, PPWCONTROL, &b[0]);
+	ioctl(lpt_base, PPWCONTROL, &b[1]);
+	ioctl(lpt_base, PPWCONTROL, &b[2]);
+	usleep(4);		// 3.3 us
 
-#endif
+	ioctl(lpt_base, PPWDATA, &data);
+	ioctl(lpt_base, PPWCONTROL, &b[3]);
+	ioctl(lpt_base, PPWCONTROL, &b[4]);
+	ioctl(lpt_base, PPWCONTROL, &b[5]);
+	usleep(23);
 }
 
 

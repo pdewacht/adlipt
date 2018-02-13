@@ -165,7 +165,7 @@ void parseTune(struct Tune *tune) {
 
 void parseNote(struct Tune *tune) {
   // Get index of note in base frequenct table.
-  char note = (tune->data[tune->index ++] - 97) * 3;
+  unsigned char note = (tune->data[tune->index ++] - 97) * 3;
   if (tune->data[tune->index] == '-') {
     note ++;
     tune->index ++;

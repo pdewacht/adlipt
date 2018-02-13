@@ -51,7 +51,7 @@
 	class OPL2 {
 		public:
 			OPL2();
-			void init(short lpt_base);
+			void init(int lpt_base);
 			void reset();
 			void write(byte, byte);
 
@@ -111,7 +111,7 @@
 			const static byte offset[2][9];
 			const static byte drumOffset[6];
 			const static byte instrumentBaseRegs[11];
-                        short lpt_base;
+                        int lpt_base;
 			byte oplRegisters[256];
 			byte getRegisterOffset(byte, bool);
 	};

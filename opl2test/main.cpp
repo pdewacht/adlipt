@@ -1,89 +1,60 @@
 #include <stdlib.h>
-#include <conio.h>
-#include <dos.h>
-#include <i86.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <linux/ppdev.h>
 #include "OPL2.h"
 #include "demotune.h"
 
-#define STR(x) #x
-#define XSTR(x) STR(x)
 
-
-static short get_lpt_port(int i)
+static int setup(char *parport)
 {
-  return *(short __far *)MK_FP(0x40, 6 + 2*i);
+  int fd = -1;
+  if ((fd = open(parport, O_RDWR)) < 0) {
+    fprintf(stderr, "cannot open %s: %m\n", parport);
+    goto err;
+  }
+  if (ioctl(fd, PPCLAIM) < 0) {
+    fprintf(stderr, "cannot claim parallel port: %m\n");
+    goto err;
+  }
+
+  return fd;
+err:
+  if (fd >= 0) close(fd);
+  return -1;
 }
 
-static short setup(void)
-{
-  char num_ports, port, i;
-
-  num_ports = 0;
-  for (i = 1; i < 4; i++) {
-    if (get_lpt_port(i)) {
-      num_ports++;
-      port = i;
-    }
-  }
-
-  if (num_ports == 0) {
-    cputs("Sorry, no printer port found...\r\n");
-    exit(1);
-  }
-  else if (num_ports == 1) {
-    cprintf("Found one printer port: LPT%d\r\n", port);
-    return get_lpt_port(port);
-  }
-  else {
-    cputs("Found multiple printer ports:");
-    for (i = 1; i < 4; i++) {
-      if (get_lpt_port(i)) {
-        cprintf(" LPT%d", i);
-      }
-    }
-    cputs("\r\nWhich one is the OPL2LPT connected to? [");
-    for (i = 1; i < 4; i++) {
-      if (get_lpt_port(i)) {
-        cprintf("%d", i);
-      }
-    }
-    cputs("]? ");
-    do {
-      port = getch() - '0';
-    } while (port < 1 || port > 3 || !get_lpt_port(port));
-    cprintf("LPT%d\r\n", port);
-    return get_lpt_port(port);
-  }
-  return 0;
-}
-
-static volatile int interrupted = 0;
-
-static void __interrupt __far ctrlc_handler()
-{
+static int interrupted = 0;
+static void sigint(int) {
   interrupted = 1;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
-  cputs("== OPL2LPT test program (" XSTR(VERSION) ") ==\r\n\r\n");
-  short lpt_base = setup();
-  cputs("\r\nPress any key to play some music...");
-  do {
-    getch();
-  } while (kbhit());
-  _dos_setvect(0x23, ctrlc_handler);
+  printf("== OPL2LPT test program ==\n\n");
+  if (argc != 2) {
+    printf("First argument should be path to parallel port (eg /dev/parport0)\n");
+    return 1;
+  }
+
+  int lpt_base = setup(argv[1]);
+  if (lpt_base < 0) return 1;
+
   extern OPL2 opl2;
   opl2.init(lpt_base);
   music_setup();
-  cputs("\r\n\r\nPress any key to stop...");
-  while (!kbhit() && !interrupted) {
+  printf("\n\nPress Ctrl-C to stop...");
+  fflush(stdout);
+  signal(SIGINT, sigint);
+  while (!interrupted) {
     music_loop();
   }
   music_shutdown();
-  while (kbhit()) {
-    getch();
-  }
-  cputs("\r\n\r\n");
+  printf("\n\n");
   return 0;
 }
