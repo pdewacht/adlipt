@@ -22,7 +22,7 @@ int parseNumber(struct Tune *tune);
 const byte noteDefs[21] = {
   NOTE_A, NOTE_A - 1, NOTE_A + 1,
   NOTE_B, NOTE_B - 1, NOTE_B + 1,
-  NOTE_C, NOTE_C - 1, NOTE_C + 1,
+  NOTE_C, 0/*FIXME*/, NOTE_C + 1,
   NOTE_D, NOTE_D - 1, NOTE_D + 1,
   NOTE_E, NOTE_E - 1, NOTE_E + 1,
   NOTE_F, NOTE_F - 1, NOTE_F + 1,
@@ -36,7 +36,7 @@ struct Tune {
   int channel;
   int octave;
   int noteDuration;
-  char noteLength;
+  int noteLength;
   unsigned long nextNoteTime;
   unsigned long releaseTime;
   int index;
