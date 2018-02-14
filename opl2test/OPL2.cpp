@@ -31,9 +31,13 @@
  * Hacked into a OPL2LPT test program by pdewacht@gmail.com.
  */
 
+#ifdef __linux__
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <linux/ppdev.h>
+#else
+#include <conio.h>
+#endif
 #include "OPL2.h"
 
 #define PP_NOT_STROBE   0x1
@@ -83,6 +87,18 @@ void OPL2::init(int lpt_base) {
  * Send the given byte of data to the given register of the OPL2 chip.
  */
 void OPL2::write(byte reg, byte data) {
+#ifdef ADLIB
+
+	outp(0x388, reg);
+	for (int i = 0; i < 6; i++) {
+		(volatile) inp(0x388);
+	}
+	outp(0x389, data);
+	for (int i = 0; i < 35; i++) {
+		(volatile) inp(0x388);
+	}
+
+#else /* !ADLIB */
 	static byte b[] = {
 		PP_NOT_SELECT | PP_NOT_STROBE | PP_INIT,
 		PP_NOT_SELECT | PP_NOT_STROBE,
@@ -95,6 +111,7 @@ void OPL2::write(byte reg, byte data) {
 	if (lpt_base == -1) {
 		return;
 	}
+#ifdef __linux__
 	ioctl(lpt_base, PPWDATA, &reg);
 	ioctl(lpt_base, PPWCONTROL, &b[0]);
 	ioctl(lpt_base, PPWCONTROL, &b[1]);
@@ -106,6 +123,25 @@ void OPL2::write(byte reg, byte data) {
 	ioctl(lpt_base, PPWCONTROL, &b[4]);
 	ioctl(lpt_base, PPWCONTROL, &b[5]);
 	usleep(23);
+#else /* !__linux__ */
+	int lpt_data = lpt_base;
+	int lpt_ctrl = lpt_base + 2;
+	outp(lpt_data, reg);
+	outp(lpt_ctrl, b[0]);
+	outp(lpt_ctrl, b[1]);
+	outp(lpt_ctrl, b[2]);
+	for (int i = 0; i < 6; i++) {
+		(volatile) inp(lpt_ctrl);
+	}
+	outp(lpt_data, data);
+	outp(lpt_ctrl, b[3]);
+	outp(lpt_ctrl, b[4]);
+	outp(lpt_ctrl, b[5]);
+	for (int i = 0; i < 35; i++) {
+		(volatile) inp(lpt_ctrl);
+	}
+#endif
+#endif
 }
 
 
