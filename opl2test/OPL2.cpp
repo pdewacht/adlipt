@@ -70,14 +70,14 @@ const byte OPL2::instrumentBaseRegs[11] = {
 
 
 OPL2::OPL2() {
-	lpt_base = -1;
+	lpt_base = 0;
 }
 
 
 /**
  * Initialize the YM3812.
  */
-void OPL2::init(int lpt_base) {
+void OPL2::init(LPT_PORT lpt_base) {
 	this->lpt_base = lpt_base;
 	reset();
 }
@@ -108,20 +108,20 @@ void OPL2::write(byte reg, byte data) {
 		PP_NOT_SELECT,
 		PP_NOT_SELECT | PP_INIT
 	};
-	if (lpt_base == -1) {
+	if (lpt_base == 0) {
 		return;
 	}
 #ifdef __linux__
-	ioctl(lpt_base, PPWDATA, &reg);
-	ioctl(lpt_base, PPWCONTROL, &b[0]);
-	ioctl(lpt_base, PPWCONTROL, &b[1]);
-	ioctl(lpt_base, PPWCONTROL, &b[2]);
+	ieee1284_write_data(lpt_base, reg);
+	ieee1284_write_control(lpt_base, b[0] ^ C1284_INVERTED);
+	ieee1284_write_control(lpt_base, b[1] ^ C1284_INVERTED);
+	ieee1284_write_control(lpt_base, b[2] ^ C1284_INVERTED);
 	usleep(4);		// 3.3 us
 
-	ioctl(lpt_base, PPWDATA, &data);
-	ioctl(lpt_base, PPWCONTROL, &b[3]);
-	ioctl(lpt_base, PPWCONTROL, &b[4]);
-	ioctl(lpt_base, PPWCONTROL, &b[5]);
+	ieee1284_write_data(lpt_base, data);
+	ieee1284_write_control(lpt_base, b[3] ^ C1284_INVERTED);
+	ieee1284_write_control(lpt_base, b[4] ^ C1284_INVERTED);
+	ieee1284_write_control(lpt_base, b[5] ^ C1284_INVERTED);
 	usleep(23);
 #else /* !__linux__ */
 	int lpt_data = lpt_base;

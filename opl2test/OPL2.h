@@ -1,6 +1,13 @@
 #ifndef OPL2_LIB_H_
 #define OPL2_LIB_H_
 
+#ifdef __linux__
+#include <ieee1284.h>
+#define LPT_PORT struct parport *
+#else
+#define LPT_PORT short
+#endif
+
 	#ifndef TRUE
 	#define TRUE 1
 	#endif
@@ -51,7 +58,7 @@
 	class OPL2 {
 		public:
 			OPL2();
-			void init(int lpt_base);
+			void init(LPT_PORT lpt_base);
 			void reset();
 			void write(byte, byte);
 
@@ -111,7 +118,7 @@
 			const static byte offset[2][9];
 			const static byte drumOffset[6];
 			const static byte instrumentBaseRegs[11];
-                        int lpt_base;
+                        LPT_PORT lpt_base;
 			byte oplRegisters[256];
 			byte getRegisterOffset(byte, bool);
 	};
