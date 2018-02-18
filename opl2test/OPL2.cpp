@@ -31,7 +31,13 @@
  * Hacked into a OPL2LPT test program by pdewacht@gmail.com.
  */
 
+#ifdef __linux__
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <linux/ppdev.h>
+#else
 #include <conio.h>
+#endif
 #include "OPL2.h"
 
 #define PP_NOT_STROBE   0x1
@@ -71,7 +77,7 @@ OPL2::OPL2() {
 /**
  * Initialize the YM3812.
  */
-void OPL2::init(short lpt_base) {
+void OPL2::init(LPT_PORT lpt_base) {
 	this->lpt_base = lpt_base;
 	reset();
 }
@@ -92,27 +98,49 @@ void OPL2::write(byte reg, byte data) {
 		(volatile) inp(0x388);
 	}
 
-#else
-	if (!lpt_base) {
+#else /* !ADLIB */
+	static byte b[] = {
+		PP_NOT_SELECT | PP_NOT_STROBE | PP_INIT,
+		PP_NOT_SELECT | PP_NOT_STROBE,
+		PP_NOT_SELECT | PP_NOT_STROBE | PP_INIT,
+
+		PP_NOT_SELECT | PP_INIT,
+		PP_NOT_SELECT,
+		PP_NOT_SELECT | PP_INIT
+	};
+	if (lpt_base == 0) {
 		return;
 	}
+#ifdef __linux__
+	ieee1284_write_data(lpt_base, reg);
+	ieee1284_write_control(lpt_base, b[0] ^ C1284_INVERTED);
+	ieee1284_write_control(lpt_base, b[1] ^ C1284_INVERTED);
+	ieee1284_write_control(lpt_base, b[2] ^ C1284_INVERTED);
+	usleep(4);		// 3.3 us
+
+	ieee1284_write_data(lpt_base, data);
+	ieee1284_write_control(lpt_base, b[3] ^ C1284_INVERTED);
+	ieee1284_write_control(lpt_base, b[4] ^ C1284_INVERTED);
+	ieee1284_write_control(lpt_base, b[5] ^ C1284_INVERTED);
+	usleep(23);
+#else /* !__linux__ */
 	int lpt_data = lpt_base;
 	int lpt_ctrl = lpt_base + 2;
 	outp(lpt_data, reg);
-	outp(lpt_ctrl, PP_NOT_SELECT | PP_NOT_STROBE | PP_INIT);
-	outp(lpt_ctrl, PP_NOT_SELECT | PP_NOT_STROBE);
-	outp(lpt_ctrl, PP_NOT_SELECT | PP_NOT_STROBE | PP_INIT);
+	outp(lpt_ctrl, b[0]);
+	outp(lpt_ctrl, b[1]);
+	outp(lpt_ctrl, b[2]);
 	for (int i = 0; i < 6; i++) {
 		(volatile) inp(lpt_ctrl);
 	}
 	outp(lpt_data, data);
-	outp(lpt_ctrl, PP_NOT_SELECT | PP_INIT);
-	outp(lpt_ctrl, PP_NOT_SELECT);
-	outp(lpt_ctrl, PP_NOT_SELECT | PP_INIT);
+	outp(lpt_ctrl, b[3]);
+	outp(lpt_ctrl, b[4]);
+	outp(lpt_ctrl, b[5]);
 	for (int i = 0; i < 35; i++) {
 		(volatile) inp(lpt_ctrl);
 	}
-
+#endif
 #endif
 }
 

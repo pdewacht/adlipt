@@ -6,6 +6,8 @@ void timer_shutdown();
 unsigned long timer_get();
 
 void hlt(void);
+#ifndef __linux__
 #pragma aux hlt = "hlt";
+#endif
 
 #endif
