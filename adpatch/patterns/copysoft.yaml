@@ -1,0 +1,16 @@
+---
+name: Copysoft Adlib detection
+find: |
+  test word [bp-2], 0xE0
+  jnz L1
+  mov ax, [bp-4]
+  and ax, 0xE0
+  cmp ax, 0xC0
+  jnz L1
+  mov ax, 1
+  jmp L2
+  L1:
+  db 0x33, 0xC0  ; xor ax, ax
+  L2:
+replace: |
+  mov ax, 1

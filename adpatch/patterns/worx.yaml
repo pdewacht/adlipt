@@ -1,0 +1,86 @@
+---
+name: WORX Toolkit Adlib detection (earlier version)
+find: |
+  and bx, 0xE0E0
+  mov ax, 0
+  cmp bl, 0
+  jnz L1
+  cmp bh, 0xC0
+  jnz L1
+  mov ax, 1
+  L1:
+replace: |
+  mov ax, 1
+---
+name: WORX Toolkit Adlib detection (later version)
+find: |
+  and bx, 0xE0E0
+  db 0x22, 0xFB  ; and bh, bl
+  db 0x33, 0xC0  ; xor ax, ax
+  cmp bh, 0
+  jnz L1
+  inc ax
+  L1:
+replace: |
+  mov ax, 1
+---
+name: WORX Toolkit Adlib output (version 2.01)
+find: |
+  push bx
+  push cx
+  push dx
+  mov dx, 0x388
+  out dx, al
+  mov cx, ANYWORD
+  L1: in al, dx
+  loop L1
+  inc dx
+  xchg al, ah
+  out dx, al
+  mov cx, ANYWORD
+  L2: in ax, 0x40
+  db 0x8B, 0xD8  ; mov bx, ax
+  L3: in ax, 0x40
+  db 0x3B, 0xC3  ; cmp ax, bx
+  jz L3
+  loop L2
+  pop dx
+  pop cx
+  pop bx
+replace: |
+  push cx
+  push dx
+  %define ARG1 al
+  %define ARG2 ah
+  %include 'standard.s'
+  pop dx
+  pop cx
+---
+name: WORX Toolkit Adlib output (version 2.1) [requires 286+]
+find: |
+  push ax
+  push bx
+  push cx
+  push dx
+  mov dx, 0x388
+  out dx, al
+  mov cx, ANYWORD
+  L1: in al, dx
+  loop L1
+  inc dx
+  xchg al, ah
+  out dx, al
+  mov cx, ANYWORD
+  L2: in al, dx
+  in al, dx
+  loop L2
+  pop dx
+  pop cx
+  pop bx
+  pop ax
+replace: |
+  pusha
+  %define ARG1 al
+  %define ARG2 ah
+  %include 'xcompact.s'
+  popa
