@@ -1,14 +1,15 @@
 ---
-find: db 'Packed file is corrupt'
+name: EXEPACK signature
+ragel: |
+  'Packed file is corrupt'
 warn: "This file might be compressed using EXEPACK."
 ---
-find: db 'PKLITE Copr. '
+name: PKLITE signature
+ragel: |
+  'PKLITE Copr. '
 warn: "This file might be compressed using PKLITE."
 ---
-find: |
-  BEGIN
-    db 'LZ09'
-  ALT
-    db 'LZ91'
-  END
+name: LZEXE signature
+ragel: |
+  'LZ09'|'LZ91'
 warn: "This file might be compressed using LZEXE."

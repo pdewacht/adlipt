@@ -79,18 +79,35 @@ main := |*
 
 for f in sorted(glob.glob('patterns/*.yaml')):
     for doc in yaml.safe_load_all(open(f)):
-        pattern = compile_pattern(doc['find'])
-        print("%s => {" % pattern);
+        if 'name' in doc:
+            name = doc['name']
+        else:
+            print('%s: missing name' % f, file=sys.stderr)
+            continue
+
+        if 'ragel' in doc:
+            pattern = doc['ragel']
+        elif 'find' in doc:
+            pattern = compile_pattern(doc['find'])
+        else:
+            print('%s: %s: missing pattern' % (f, name), file=sys.stderr)
+            continue
+
+        action = doc.get('hack', '')
         if 'warn' in doc:
-            print('  printf("Warning: %%s\\n", %s);' % c_string(doc['warn']))
+            action += '\n  printf("Warning: %%s\\n", %s);' % c_string(doc['warn'])
         if 'replace' in doc:
             code, port_idx = compile_replacement(doc['replace'])
-            print('  if (!patch(%s, ts, te, %s, %s, %s)) { return false; }' % (
-                c_string(doc['name']),
+            action += '\n  if (!patch(%s, ts, te, %s, %s, %s)) { return false; }' % (
+                c_string(name),
                 c_bytes(code),
                 len(code),
-                port_idx))
-        print("};\n")
+                port_idx)
+        if not action:
+            printf('%s: %s: missing action' % (f, name), file=sys.stderr)
+            continue
+
+        print("%s => { %s };\n" % (pattern, action))
 
 print("""any;
 *|;

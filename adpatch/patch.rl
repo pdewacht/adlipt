@@ -1,5 +1,6 @@
 /* -*- Mode: C -*- */
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include "patch.h"
@@ -56,6 +57,22 @@ static bool patch(const char *name,
   return true;
 }
 
+static void patch_jump_16(unsigned char *buf, unsigned char *target) {
+  int16_t rel16 = target - buf - 3;
+  buf[0] = 0xE9;
+  buf[1] = rel16;
+  buf[2] = rel16 >> 8;
+}
+
+static void patch_jump_32(unsigned char *buf, unsigned char *target) {
+  int32_t rel32 = target - buf - 5;
+  buf[0] = 0xE9;
+  buf[1] = rel32;
+  buf[2] = (int)rel32 >> 8;
+  buf[3] = rel32 >> 16;
+  buf[4] = rel32 >> 24;
+}
+
 bool apply_patches(FILE *in, FILE *out, int *out_applied_patches) {
   static unsigned char buf[BUFSIZE];
   int cs, act, have = 0;
@@ -69,6 +86,7 @@ bool apply_patches(FILE *in, FILE *out, int *out_applied_patches) {
   while (!done) {
     unsigned char *p = buf + have, *pe, *eof = 0;
     int len, space = BUFSIZE - have;
+    unsigned char *aux_ptr = 0;
 
     if (space == 0) {
       /* We've used up the entire buffer storing an already-parsed token

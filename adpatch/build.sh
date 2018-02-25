@@ -8,7 +8,7 @@ DEFS="-dVERSION=$VERSION"
 
 set -x
 python3 genpat.py > patterns.rl
-ragel -F1 patch.rl
+ragel -s -G2 patch.rl
 $CC $DEFS main.c
 $CC $DEFS patch.c
 wlink name adpatch system dos file main,patch option quiet
