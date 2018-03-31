@@ -39,7 +39,13 @@ __declspec(naked) static void address_io_handler() {
   __asm {
     test ecx, not 4
     jnz skip
-    push 0
+    push eax
+    /* Find client CS:IP, calculate linear address */
+    movzx eax, word ptr [ebp + 0x2C]
+    shl eax, 4
+    add eax, dword ptr [ebp + 0x28]
+    /* Put on stack, restore original EAX */
+    xchg eax, dword ptr [esp]
     call emulate_adlib_address_io
     ret
   skip:  /* VMMJmp Simulate_IO */
@@ -60,7 +66,13 @@ __declspec(naked) static void data_io_handler() {
   __asm {
     test ecx, not 4
     jnz skip
-    push 0
+    push eax
+    /* Find client CS:IP, calculate linear address */
+    movzx eax, word ptr [ebp + 0x2C]
+    shl eax, 4
+    add eax, dword ptr [ebp + 0x28]
+    /* Put on stack, restore original EAX */
+    xchg eax, dword ptr [esp]
     call emulate_adlib_data_io
     ret
   skip:  /* VMMJmp Simulate_IO */
@@ -130,7 +142,7 @@ static int install(char *cmd_line) {
   config.lpt_port = port;
   config.bios_id = param;
   config.cpu_type = cpu_type();
-  config.enable_patching = 0;
+  config.enable_patching = 1;
 
   if (Install_IO_Handler(0x388, address_io_handler) != 0) {
     goto fail1;
