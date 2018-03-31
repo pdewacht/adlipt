@@ -185,16 +185,10 @@ static bool setup_emm386() {
     return false;
   }
 
-  if (!(version[0] == 4 && version[1] == 48)
-      && !(version[0] == 4 && version[1] == 49)) {
-    cprintf("You have an EMM386 version I don't know about: version %d.%d\r\n"
-            "Please report your experiences.\r\n\r\n",
-            version[0], version[1]);
-  }
-
   err = emm386_virtualize_io(0x388, 0x389, 2, &emm386_table, (int)&resident_end, &v);
   if (err) {
-    return false;
+    cputs("EMM386 I/O virtualization failed\r\n");
+    exit(1);
   }
   config.emm_type = EMM_EMM386;
   config.emm386_virt_io_handle = v;
