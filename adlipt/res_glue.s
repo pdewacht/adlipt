@@ -111,7 +111,7 @@ _qemm_handler:
         push ds
         push cs
         pop ds
-        pushd 0
+        push dword ptr [esp + 0x0A]
         call emulate_adlib_data_io_
         pop ds
         retf
@@ -120,7 +120,7 @@ _qemm_handler:
         push ds
         push cs
         pop ds
-        pushd 0
+        push dword ptr [esp + 0x0A]
         call emulate_adlib_address_io_
         pop ds
         retf

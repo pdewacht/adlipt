@@ -350,9 +350,7 @@ static void status(struct config __far *cfg) {
   cputs("\r\n");
 
   cputs("  Patching: ");
-  cputs(cfg->emm_type == EMM_QEMM ? "not supported with QEMM" :
-        cfg->enable_patching ? "enabled" :
-        "disabled");
+  cputs(cfg->enable_patching ? "enabled" : "disabled");
   cputs("\r\n");
 }
 
@@ -469,10 +467,6 @@ int main(void) {
     /* hook AMIS interrupt */
     amis_handler.next_handler = _dos_getvect(0x2D);
     _dos_setvect(0x2D, (void (__interrupt *)()) &amis_handler);
-  }
-
-  if (cfg->emm_type != EMM_EMM386) {
-    cfg->enable_patching = false;
   }
 
   status(cfg);
