@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-VERSION=20171218
+VERSION=20180402
 
 CC='wcc -bt=dos -zq -oxhs'
 DEFS="-dVERSION=$VERSION"

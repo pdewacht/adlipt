@@ -1,0 +1,151 @@
+---
+name: Miles Audio Interface Library 2.0
+ragel: |
+  # Adlib output routine
+  out_dx_al.
+  mov_ah_i8.any.
+  in_al_dx.
+  dec_ah.
+  jnz_i8.0xFB.
+  mov_al_cl.
+  inc_dx.
+  out_dx_al.
+  dec_dx.
+  mov_ah_i8.any.
+  in_al_dx.
+  dec_ah.
+  jnz_i8.0xFB.
+  retf.
+  # Some other routines
+  ^retf*.retf.
+  ^retf*.retf.
+  ^retf*.retf.
+  # Adlib detection routine
+  push_ds @{aux_ptr=fpc;}.
+  push_si.
+  push_di.
+  ^retf*.
+  and_si_i16.0xE0.0x00.
+  and_di_i16.0xE0.0x00.
+  mov_ax_i16.0x00.0x00.
+  cmp_di_byte_i8.0x00.
+  jnz_i8.0x09.
+  cmp_si_i16.0xC0.0x00.
+  jnz_i8.0x03.
+  mov_ax_i16.0x01.0x00.
+  pop_di.
+  pop_si.
+  pop_ds.
+  retf
+hack: |
+  patch_jump_16(ts, aux_ptr + 4);
+  ts = aux_ptr;
+replace: |
+  mov ax, 1
+  retf
+  push cx
+  mov ah, cl
+  %define ARG1 al
+  %define ARG2 ah
+  %include 'standard.s'
+  pop cx
+  retf
+---
+name: Miles Audio Interface Library/16 (Adlib output)
+ragel: |
+  ((mov_dx_i16.any.any) | (cs?.mov_dx_word_any16)).
+  mov_al_bl.
+  out_dx_al.
+  in_al_dx+.
+  mov_al_cl.
+  (inc_dx | (mov_dx_i16.any.any) | (cs?.mov_dx_word_any16)).
+  out_dx_al.
+  (dec_dx | (mov_dx_i16.any.any) | (cs?.mov_dx_word_any16)).
+  in_al_dx+
+replace: |
+  mov ah, cl
+  %define ARG1 bl
+  %define ARG2 ah
+  %include 'standard.s'
+---
+name: Miles Audio Interface Library/16 (Adlib check)
+ragel: |
+  ((
+    mov_ax_i16.0x04.0x00.
+    mov_bx_i16.0x60.0x00.
+    push_bx.
+    push_ax.
+    push_cs.
+    call_any16
+  ) | (
+    # What insanity is this... (Ultima VII The Black Gate)
+    push_ax. push_bp. mov_bp_sp. mov_word_bp_i8_i16.0x02.0x60.0x00. pop_bp.
+    push_ax. push_bp. mov_bp_sp. mov_word_bp_i8_i16.0x02.0x04.0x00. pop_bp.
+    push_cs.
+    call_any16
+  )).
+  ^(ret|retf)*.
+  and_si_i16.0xE0.0x00.
+  and_di_i16.0xE0.0x00.
+  mov_ax_i16.0x00.0x00.
+  cmp_di_byte_i8.0x00.
+  jnz_i8.0x09.
+  cmp_si_i16.0xC0.0x00.
+  jnz_i8.0x03.
+  mov_ax_i16.0x01.0x00
+replace: |
+  mov ax, 1
+---
+name: Miles Audio Interface Library/32
+ragel: |
+  # Adlib output routine
+  out_dx_al.
+  mov_ah_i8.any.
+  in_al_dx.
+  dec_ah.
+  jnz_i8.0xFB.
+  mov_al_cl.
+  inc_edx.
+  out_dx_al.
+  dec_edx.
+  mov_ah_i8.any.
+  in_al_dx.
+  dec_ah.
+  jnz_i8.0xFB.
+  ret.
+  # Some other routines
+  ^ret*.ret.
+  ^ret*.ret.
+  ^ret*.ret.
+  # Adlib detection routine
+  push_ebx @{aux_ptr=fpc;}.
+  push_esi.
+  push_edi.
+  ^ret*.
+  and_esi_i32.0xE0.0x00.0x00.0x00.
+  and_edi_i32.0xE0.0x00.0x00.0x00.
+  mov_eax_i32.0x00.0x00.0x00.0x00.
+  cmp_edi_byte_i8.0x00.
+  jnz_i8.0x0D.
+  cmp_esi_i32.0xC0.0x00.0x00.0x00.
+  jnz_i8.0x05.
+  mov_eax_i32.0x01.0x00.0x00.0x00.
+  pop_edi.
+  pop_esi.
+  pop_ebx.
+  ret
+hack: |
+  patch_jump_32(ts, aux_ptr + 4);
+  ts = aux_ptr;
+replace: |
+  bits 32
+  xor eax, eax
+  inc eax
+  ret
+  push ecx
+  mov ah, cl
+  %define ARG1 al
+  %define ARG2 ah
+  %include 'standard32.s'
+  pop ecx
+  ret

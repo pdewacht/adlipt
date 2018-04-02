@@ -74,6 +74,7 @@ def c_bytes(s):
 print("""
 %%{
 machine AdlibScanner;
+include x86 "x86.rl";
 main := |*
 """)
 
