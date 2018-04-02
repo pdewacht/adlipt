@@ -36,15 +36,11 @@ Load ADLiPT using the command:
 
 ## Requirements
 
-- a 386 CPU
-- EMM386 (QEMM or JEMM will also work, but they will be slower, as the
-  'patching' optimization is currently only implemented with EMM386).
-
-Tested versions:
-
-- EMM386 version 4.46 or later (tested with version 4.49 from MS-DOS 6.22)
-- QEMM 7.03 or later (tested with QEMM 7.5)
-- JEMM 5.78
+- 386 CPU
+- A compatible memory manager:
+  - EMM386 version 4.46 or later (tested with version 4.49 from MS-DOS 6.22)
+  - QEMM 7.03 or later (tested with QEMM versions 7.03, 7.5, 8.0, 9.01)
+  - JEMM 5.78
 
 EMS memory is _not_ required. If you don't use software that requires
 EMS memory, you can load EMM386 with the `NOEMS` parameter.
