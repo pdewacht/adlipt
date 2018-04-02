@@ -12,6 +12,7 @@ cp adlipt/README.md "$DIR/adlipt.txt"
 cp adpatch/adpatch.exe "$DIR/"
 cp adpatch/README.md "$DIR/adpatch.txt"
 cp opl2test/opl2test.exe "$DIR/"
+cp opl2test/opl2test.mp3 "$DIR/"
 cp opl2test/README.md "$DIR/opl2test.txt"
 
 rm -f opl2util.zip

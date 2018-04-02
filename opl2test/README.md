@@ -1,7 +1,7 @@
 # OPL2TEST
 
 This is a simple stand-alone OPL2LPT test program. Run it and it will
-play a little tune.
+play a little tune. The file opl2test.mp3 contains a reference recording.
 
 ## Copyright
 
