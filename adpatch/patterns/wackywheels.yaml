@@ -1,0 +1,30 @@
+---
+name: Wacky Wheels Adlib output
+find: |
+    mov bx,0x388
+    db 0x00, 0x00 ; padding
+    mov si,ax
+    mov al,cl
+    mov dx,bx
+    out dx,al
+    mov cx,0x6
+    db 0x00,0x00 ; padding
+    mov dx,0x388
+    db 0x00,0x00 ; padding
+    L1: dec cx
+    sub ax,ax
+    in al,dx
+    test cx,cx
+    jg L1
+    db 0x8a,0x04,0x24 ; mov al,[si]
+    db 0x8d,0x53,0x01 ; lea edx,[ebx+1]
+    db 0xee ; out dx, al
+    mov dx,bx
+    BEGIN
+      sub ax,ax
+      in al,dx
+    REPEAT
+replace: |
+    mov si,ax
+    %define ARG1 cl
+    %include 'wackywheels.s'
