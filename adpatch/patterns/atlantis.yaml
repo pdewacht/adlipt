@@ -1,0 +1,145 @@
+---
+name: Atlantis Adlib detection
+find: |
+    push ds
+    mov dx,0x388
+    mov al,0x1
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x389
+    mov al,0x0
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x388
+    mov al,0x4
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x389
+    mov al,0x60
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x388
+    mov al,0x4
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x389
+    mov al,0x80
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x388
+    in al,dx
+    mov [0x17d2],al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x388
+    mov al,0x2
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x389
+    mov al,0xff
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x388
+    mov al,0x4
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x389
+    mov al,0x21
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x388
+    in al,dx
+    mov [0x17d3],al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x388
+    mov al,0x4
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x389
+    mov al,0x60
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x388
+    mov al,0x4
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    mov dx,0x389
+    mov al,0x80
+    out dx,al
+    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
+    and byte [ANYWORD],0xe0
+    and byte [ANYWORD],0xe0
+    cmp byte [ANYWORD],0x0
+    jnz L1
+    cmp byte [ANYWORD],0xc0
+    jnz L1
+    mov al,0x1
+    jmp short L2
+    nop
+    L1: db 0x32, 0xc0 ; xor al,al
+    L2: db 0x32, 0xe4 ; xor ah,ah
+    pop ds
+replace: |
+    mov al, 0x1
+---
+name: Atlantis Adlib output (routine 1) (ADLIB.IMS)
+find: |
+    push bx
+    push cx
+    push dx
+    db 0x32, 0xFF ; xor bh,bh
+    db 0x8a, 0xdc ; mov bl,ah
+    db 0x3a, 0x87, 0x2a, 0x03 ; cmp al,[bx+0x32a]
+    jz L1
+    db 0x88, 0x87, 0x2a, 0x03 ; mov [bx+032a],al
+    db 0x86, 0xe0 ; xchg ah,al
+    mov dx,0x388 ; select control register
+    out dx,al ; output to control register
+    mov cx,[ANYWORD] ; 3.3ms delay
+    db 0xE2, 0xFE ; L2 loop L2
+    db 0x86, 0xe0 ; xchg ah,al
+    inc dx
+    out dx,al
+    mov cx,[ANYWORD] ; 33ms delay
+    db 0xE2, 0xFE ; L3 loop L3
+    L1: pop dx
+    pop cx
+    pop bx
+replace: |
+    pusha
+    xchg ah,al
+    %define ARG1 al
+    %define ARG2 ah
+    %include 'compact.s'
+    popa
+---
+name: Atlantis Adlib output (routine 2) (ADLIB.IMS)
+find: |
+    push bx
+    push cx
+    push dx
+    db 0x32, 0xFF ; xor bh,bh
+    db 0x8a, 0xdc ; mov bl,ah
+    mov [bx+0x32a],al ; indicate second pass
+    db 0x86, 0xe0 ; xchg ah,al
+    mov dx,0x388 ; select control register
+    out dx,al ; output to control register
+    mov cx,[ANYWORD] ; 3.3ms delay
+    nop
+    db 0xE2, 0xFE ; L2 loop L2
+    db 0x86, 0xe0 ; xchg ah,al
+    inc dx
+    out dx,al
+    mov cx,[ANYWORD] ; 33ms delay
+    db 0xE2, 0xFE ; L3 loop L3
+    pop dx
+    pop cx
+    pop bx
+replace: |
+    pusha
+    xchg ah,al
+    %define ARG1 al
+    %define ARG2 ah
+    %include 'compact.s'
+    popa
