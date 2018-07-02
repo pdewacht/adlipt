@@ -28,21 +28,22 @@ static bool yes() {
   return r;
 }
 
-static bool patch(const char *name,
-                  unsigned char *buf,
+static bool ask(const char *name) {
+  if (!patch_ask) {
+    fprintf(stderr, "Applying patch: %s\n", name);
+    return true;
+  } else {
+    fprintf(stderr, "Apply patch: %s? ", name);
+    return yes();
+    }
+  }
+
+static bool patch(unsigned char *buf,
                   unsigned char *buf_end,
                   const char *patch,
                   int patch_len,
                   int port_idx)
 {
-  if (!patch_ask) {
-    fprintf(stderr, "Applying patch: %s\n", name);
-  } else {
-    fprintf(stderr, "Apply patch: %s? ", name);
-    if (!yes()) {
-      return true;
-    }
-  }
   if (buf_end - buf < patch_len) {
     fprintf(stderr, "Internal error: patch too long\n");
     return false;
@@ -53,7 +54,6 @@ static bool patch(const char *name,
     buf[port_idx] = patch_port & 0xFF;
     buf[port_idx + 1] = (patch_port >> 8) & 0xFF;
   }
-  applied_patches += 1;
   return true;
 }
 
@@ -71,6 +71,10 @@ static void patch_jump_32(unsigned char *buf, unsigned char *target) {
   buf[2] = (int)rel32 >> 8;
   buf[3] = rel32 >> 16;
   buf[4] = rel32 >> 24;
+}
+
+static void applied_patch() {
+  applied_patches += 1;
 }
 
 bool apply_patches(FILE *in, FILE *out, int *out_applied_patches) {

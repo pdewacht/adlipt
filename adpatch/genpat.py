@@ -94,16 +94,21 @@ for f in sorted(glob.glob('patterns/*.yaml')):
             print('%s: %s: missing pattern' % (f, name), file=sys.stderr)
             continue
 
-        action = doc.get('hack', '')
         if 'warn' in doc:
-            action += '\n  printf("Warning: %%s\\n", %s);' % c_string(doc['warn'])
+            if ('replace' in doc) or ('hack' in doc):
+                printf('%s: %s: incompatible actions' % (f, name), file=sys.stderr)
+                continue
+            action = 'printf("Warning: %%s\\n", %s);' % c_string(doc['warn'])
+        else:
+            action = 'if (ask(%s)) {\n' % c_string(name)
+            action += doc.get('hack', '')
         if 'replace' in doc:
             code, port_idx = compile_replacement(doc['replace'])
-            action += '\n  if (!patch(%s, ts, te, %s, %s, %s)) { return false; }' % (
-                c_string(name),
+            action += 'if (!patch(ts, te, %s, %s, %s)) { return false; }\n' % (
                 c_bytes(code),
                 len(code),
                 port_idx)
+            action += 'applied_patch();\n}'
         if not action:
             printf('%s: %s: missing action' % (f, name), file=sys.stderr)
             continue
