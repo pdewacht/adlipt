@@ -142,14 +142,6 @@ void qpi_clear_port_trap(void __far **qpi_entry, int port);
   modify [ax]
 
 
-void qpi_clear_port_trap(void __far **qpi_entry, int port);
-#pragma aux qpi_clear_port_trap =               \
-  "mov ax, 0x1A0A"                              \
-  "call dword ptr [si]"                         \
-  parm [si] [dx]                                \
-  modify [ax]
-
-
 static bool amis_unhook(struct iisp_header __far *handler, unsigned our_seg) {
   for (;;) {
     struct iisp_header __far *next_handler;
@@ -358,7 +350,6 @@ static void status(struct config __far *cfg) {
 int main(void) {
   bool installed = false;
   bool found_unused_amis_id = false;
-  int unused_amis_id = -1;
   struct config __far *cfg = &config;
   int i;
 
