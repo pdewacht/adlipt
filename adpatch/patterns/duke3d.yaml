@@ -118,19 +118,3 @@ replace: |
     pop ecx
     sub eax,eax
     ret
----
-name: Duke Nukem 3D Prevent pagefault due to new audio routine
-find: |
-    bits 32
-    mov eax,0x108d0
-    db 0xE8, 0xEF, 0xBC, 0xFF, 0xFF ; call 0x10018c
-    or ebx,eax
-    db 0x74, 0x0a ; jz 0x1044ab
-    mov eax,0xffffffff
-replace: |
-    bits 32
-    mov eax,0x108d0
-    db 0xE8, 0xEF, 0xBC, 0xFF, 0xFF ; call 0x10018c
-    or ebx,eax
-    db 0xEB, 0x0a ; jmp 0x1044ab
-    mov eax,0xffffffff
