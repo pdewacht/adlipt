@@ -139,7 +139,7 @@ static unsigned emulate_read(unsigned ax, char _WCI86FAR *next_opcode);
     }                                           \
   } while (0)
 
-unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
+unsigned emulate_opl2_address_io(int port, int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
   if (!is_write) {
     return emulate_read(ax, next_opcode);
   }
@@ -148,7 +148,7 @@ unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax, char _WCI
   return ax;
 }
 
-unsigned emulate_adlib_data_io(int port, int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
+unsigned emulate_opl2_data_io(int port, int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
   if (!is_write) {
     return emulate_read(ax, next_opcode);
   }

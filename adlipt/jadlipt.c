@@ -48,7 +48,7 @@ __declspec(naked) static void address_io_handler() {
     add eax, dword ptr [ebp + 0x28]
     /* Put on stack, restore original EAX */
     xchg eax, dword ptr [esp]
-    call emulate_adlib_address_io
+    call emulate_opl2_address_io
     ret
   skip:  /* VMMJmp Simulate_IO */
     int 0x20
@@ -75,7 +75,7 @@ __declspec(naked) static void data_io_handler() {
     add eax, dword ptr [ebp + 0x28]
     /* Put on stack, restore original EAX */
     xchg eax, dword ptr [esp]
-    call emulate_adlib_data_io
+    call emulate_opl2_data_io
     ret
   skip:  /* VMMJmp Simulate_IO */
     int 0x20

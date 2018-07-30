@@ -8,8 +8,8 @@
         public _qemm_handler
 
         extern _config : near
-        extern emulate_adlib_address_io_ : proc
-        extern emulate_adlib_data_io_ : proc
+        extern emulate_opl2_address_io_ : proc
+        extern emulate_opl2_data_io_ : proc
 
 
 cmp_ah  macro
@@ -84,14 +84,14 @@ _emm386_table:
 emm386_address_handler:
         push 0xD8               ; EMM386 selector for user code segment
         push [bp+8]             ; user IP register
-        call emulate_adlib_address_io_
+        call emulate_opl2_address_io_
         clc
 _retf:  retf
 
 emm386_data_handler:
         push 0xD8
         push [bp+8]
-        call emulate_adlib_data_io_
+        call emulate_opl2_data_io_
         clc
         retf
 
@@ -112,7 +112,7 @@ _qemm_handler:
         push cs
         pop ds
         push dword ptr [esp + 0x0A]
-        call emulate_adlib_data_io_
+        call emulate_opl2_data_io_
         pop ds
         retf
 @@qemm_address_handler:
@@ -121,7 +121,7 @@ _qemm_handler:
         push cs
         pop ds
         push dword ptr [esp + 0x0A]
-        call emulate_adlib_address_io_
+        call emulate_opl2_address_io_
         pop ds
         retf
 @@qemm_ignore:
