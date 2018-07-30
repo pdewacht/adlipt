@@ -1,5 +1,7 @@
+#include <stddef.h>
 #include "jlm.h"
 #include "resident.h"
+#include "cmdline.h"
 #include "cputype.h"
 
 #define STR(x) #x
@@ -82,13 +84,6 @@ __declspec(naked) static void data_io_handler() {
 }
 
 
-int bswap(int);
-#pragma aux bswap =                             \
-  "rol ax, 8"                                   \
-  "rol eax, 16"                                 \
-  "rol ax, 8"                                   \
-  parm [eax] value [eax]
-
 static void puts(const char *str) {
   struct cb_s *hVM = Get_Cur_VM_Handle();
   struct Client_Reg_Struc *pcl = hVM->CB_Client_Pointer;
@@ -111,38 +106,33 @@ static const char banner[] =
   "  github.com/pdewacht/adlipt\r\n";
 
 static const char usage[] =
-  "Usage: JLOAD JADLIPT.DLL LPT1|LPT2|LPT3\r\n";
+  "Usage: JLOAD JADLIPT.DLL [LPT1|LPT2|LPT3]\r\n";
 
 static const char not_present[] =
   "Port not present\r\n";
 
 static int install(char *cmd_line) {
-  unsigned param;
-  short port;
-  int res;
+  enum mode mode;
 
   puts(banner);
 
-  while (*cmd_line == ' ') {
-    cmd_line++;
-  }
-  param = *(unsigned *)cmd_line;
-  param = (bswap(param) & ~0x20202000) - 'LPT1';
-  if (param > 2) {
+  /* Defaults */
+  config.bios_id = 0;
+  config.enable_patching = 1;
+  config.cpu_type = cpu_type();
+
+  mode = parse_command_line(cmd_line);
+
+  if (mode != MODE_LOAD) {
     puts(usage);
     return 0;
   }
 
-  port = get_lpt_port(param + 1);
-  if (!port) {
+  config.lpt_port = get_lpt_port(config.bios_id + 1);
+  if (!config.lpt_port) {
     puts(not_present);
     return 0;
   }
-
-  config.lpt_port = port;
-  config.bios_id = param;
-  config.cpu_type = cpu_type();
-  config.enable_patching = 1;
 
   if (Install_IO_Handler(0x388, address_io_handler) != 0) {
     goto fail1;

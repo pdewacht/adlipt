@@ -7,6 +7,7 @@
 
 #include "cputype.h"
 #include "resident.h"
+#include "cmdline.h"
 
 
 #define STR(x) #x
@@ -323,13 +324,18 @@ static short get_lpt_port(int i) {
 
 
 static void usage(void) {
-  cputs("Usage: ADLIPT LPT1|LPT2|LPT3\r\n"
+  cputs("Usage: ADLIPT [LPT1|LPT2|LPT3]\r\n"
+        "       ADLIPT STATUS\r\n"
         "       ADLIPT UNLOAD\r\n");
-  exit(1);
 }
 
 
 static void status(struct config __far *cfg) {
+  if (!cfg) {
+    cputs("  Status: not loaded\r\n");
+    return;
+  }
+
   cputs("  Status: loaded\r\n");
   cputs("  Port: LPT");
   putch('1' + cfg->bios_id);
@@ -348,16 +354,19 @@ static void status(struct config __far *cfg) {
 
 
 int main(void) {
-  bool installed = false;
   bool found_unused_amis_id = false;
-  struct config __far *cfg = &config;
+  struct config __far *resident = NULL;
+  enum mode mode;
   int i;
 
   cputs("ADLiPT " XSTR(VERSION_MAJOR) "." XSTR(VERSION_MINOR)
         "  github.com/pdewacht/adlipt\r\n\r\n");
 
+  /* Defaults */
+  config.bios_id = 0;
+  config.enable_patching = true;
+  config.psp = _psp;
   config.cpu_type = cpu_type();
-  config.enable_patching = true /* (config.cpu_type == 3) */;
 
   if (config.cpu_type < 3) {
     cputs("This TSR requires a 386 or later CPU.\r\n");
@@ -376,99 +385,79 @@ int main(void) {
     else if (result == -1 && _fmemcmp(info.signature, amis_header, 16) == 0) {
       if (info.version.word != (VERSION_MAJOR * 256 + VERSION_MINOR)) {
         cputs("Error: A different version of ADLIPT is already loaded.\r\n");
-        exit(1);
+        return 1;
       }
-      installed = true;
-      cfg = MK_FP(FP_SEG(info.signature),
-                  *(short __far *)(info.signature + _fstrlen(info.signature) + 1));
+      resident =
+        MK_FP(FP_SEG(info.signature),
+              *(short __far *)(info.signature + _fstrlen(info.signature) + 1));
       break;
     }
   }
 
-  /* Parse the command line */
+  mode = parse_command_line(MK_FP(_psp, 0x81));
+
+  if (mode == MODE_UNLOAD) {
+    if (!resident) {
+      cputs("ADLiPT is not loaded.\r\n");
+      return 1;
+    } else if (uninstall(resident)) {
+      cputs("ADLiPT is now unloaded from memory.\r\n");
+      return 0;
+    } else {
+      cputs("Could not unload ADLiPT.\r\n");
+      return 1;
+    }
+  }
+
+  if (mode == MODE_STATUS) {
+    status(resident);
+    return 0;
+  }
+
+  if (mode != MODE_LOAD) {
+    usage();
+    return 1;
+  }
+
+  if (resident) {
+    cputs("ADLiPT was already loaded.\r\n\r\n");
+    status(resident);
+    return 1;
+  }
+
+  config.lpt_port = get_lpt_port(config.bios_id + 1);
+  if (!config.lpt_port) {
+    cputs("Error: LPT");
+    putch('1' + config.bios_id);
+    cputs(" is not present.\r\n");
+    return 1;
+  }
+
+  if (!found_unused_amis_id) {
+    cputs("Error: No unused AMIS multiplex id found\n");
+    return 1;
+  }
+
+  check_jemm(config.bios_id);
+  if (!setup_qemm() && !setup_emm386()) {
+    cputs("Error: No supported memory manager found\r\n"
+          "Requires EMM386 4.46+, QEMM 7.03+ or JEMM\r\n");
+    return 1;
+  }
+
+  status(&config);
+
+  /* hook AMIS interrupt */
+  amis_handler.next_handler = _dos_getvect(0x2D);
+  _dos_setvect(0x2D, (void (__interrupt *)()) &amis_handler);
+
+  /* free environment block */
   {
-    char cmdline[127];
-    int cmdlen;
-    char *arg;
-
-    cmdlen = *(char __far *)MK_FP(_psp, 0x80);
-    _fmemcpy(cmdline, MK_FP(_psp, 0x81), 127);
-    cmdline[cmdlen] = 0;
-
-    for (arg = strtok(cmdline, " "); arg; arg = strtok(NULL, " ")) {
-      if (strnicmp(arg, "lpt", 3) == 0 && (i = arg[3] - '0') >= 1 && i <= 3) {
-        int port = get_lpt_port(i);
-        if (!port) {
-          cputs("Error: LPT");
-          putch('0' + i);
-          cputs(" is not present.\r\n");
-          exit(1);
-        }
-        cfg->lpt_port = port;
-        cfg->bios_id = i - 1;
-      }
-      else if (stricmp(arg, "patch") == 0) {
-        cfg->enable_patching = true;
-      }
-      else if (stricmp(arg, "nopatch") == 0) {
-        cfg->enable_patching = false;
-      }
-      else if (stricmp(arg, "forcedelay") == 0) {
-        cfg->cpu_type = 100;
-      }
-      else if (stricmp(arg, "noforcedelay") == 0) {
-        cfg->cpu_type = config.cpu_type;
-      }
-      else if (stricmp(arg, "unload") == 0) {
-        if (!installed) {
-          cputs("ADLiPT is not loaded.\r\n");
-          exit(1);
-        } else if (uninstall(cfg)) {
-          cputs("ADLiPT is now unloaded from memory.\r\n");
-          exit(0);
-        } else {
-          cputs("Could not unload ADLiPT.\r\n");
-          exit(1);
-        }
-      } else {
-        usage();
-      }
-    }
-  }
-
-  if (!installed) {
-    if (!cfg->lpt_port) {
-      usage();
-      return 1;
-    }
-    cfg->psp = _psp;
-
-    if (!found_unused_amis_id) {
-      cputs("Error: No unused AMIS multiplex id found\n");
-      return 1;
-    }
-
-    check_jemm(cfg->bios_id);
-    if (!setup_qemm() && !setup_emm386()) {
-      cputs("Error: no supported memory manager found\r\n"
-            "Requires EMM386 4.46+, QEMM 7.03+ or JEMM\r\n");
-      return 1;
-    }
-
-    /* hook AMIS interrupt */
-    amis_handler.next_handler = _dos_getvect(0x2D);
-    _dos_setvect(0x2D, (void (__interrupt *)()) &amis_handler);
-  }
-
-  status(cfg);
-
-  if (!installed) {
-    /* free environment block */
     int __far *env_seg = MK_FP(_psp, 0x2C);
     _dos_freemem(*env_seg);
     *env_seg = 0;
-
-    _dos_keep(0, ((char __huge *)&resident_end - (char __huge *)(_psp :> 0) + 15) / 16);
   }
-  return 0;
+
+  _dos_keep(0, ((char __huge *)&resident_end - (char __huge *)(_psp :> 0) + 15) / 16);
+  return 1;
 }

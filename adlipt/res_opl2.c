@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 #pragma code_seg("RESIDENT")
 #pragma data_seg("RESIDENT", "CODE")
 
@@ -120,7 +122,7 @@ static char timer_reg;
 
 #define STATUS_LOW_BITS 0x06
 
-static unsigned emulate_read(unsigned ax, codeptr next_opcode);
+static unsigned emulate_read(unsigned ax, char _WCI86FAR *next_opcode);
 #pragma aux emulate_read parm [ax] [bx dx] modify exact [ax bx cx dx]
 
 #define DO_LPT(value, flags, delay)             \
@@ -137,7 +139,7 @@ static unsigned emulate_read(unsigned ax, codeptr next_opcode);
     }                                           \
   } while (0)
 
-unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax, codeptr next_opcode) {
+unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
   if (!is_write) {
     return emulate_read(ax, next_opcode);
   }
@@ -146,7 +148,7 @@ unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax, codeptr n
   return ax;
 }
 
-unsigned emulate_adlib_data_io(int port, int is_write, unsigned ax, codeptr next_opcode) {
+unsigned emulate_adlib_data_io(int port, int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
   if (!is_write) {
     return emulate_read(ax, next_opcode);
   }
@@ -157,7 +159,7 @@ unsigned emulate_adlib_data_io(int port, int is_write, unsigned ax, codeptr next
   return ax;
 }
 
-static unsigned emulate_read(unsigned ax, codeptr next_opcode) {
+static unsigned emulate_read(unsigned ax, char _WCI86FAR *next_opcode) {
   /*
    * Emulate the timers. We let them expire instantaneously.
    * So far I haven't found any software that uses the timers for
@@ -188,7 +190,7 @@ static unsigned emulate_read(unsigned ax, codeptr next_opcode) {
      * selected that wouldn't be used in such a routine.
      */
     if (address >= 0x20) {
-      codeptr opc = next_opcode - 1;
+      char _WCI86FAR *opc = next_opcode - 1;
       if (*opc == 0xEC) {
         *opc = 0x90;
       }
