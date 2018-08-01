@@ -23,57 +23,6 @@ static char inp(unsigned port);
   parm [dx]                                     \
   modify exact [ax]
 
-static void address_delay(unsigned port);
-#pragma aux address_delay =                     \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  parm [dx]                                     \
-  modify exact [ax]
-
-static void data_delay(unsigned port);
-#pragma aux data_delay =                        \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  parm [dx]                                     \
-  modify exact [ax]
-
 #define PP_NOT_STROBE   0x1
 #define PP_NOT_AUTOFD   0x2
 #define PP_INIT         0x4
@@ -117,46 +66,79 @@ static void write4hex(int x) {
 
 /* I/O virtualization */
 
-static char address;
-static char timer_reg;
+#define STATUS_OPL2_LOW_BITS 0x06
+#define STATUS_OPL3_LOW_BITS 0x00
 
-#define STATUS_LOW_BITS 0x06
+#define DELAY_OPL2_ADDRESS 6
+#define DELAY_OPL2_DATA 35
+#define DELAY_OPL3 6
+
+static char address;
+static short timer_reg;
 
 static unsigned emulate_read(unsigned ax, char _WCI86FAR *next_opcode);
 #pragma aux emulate_read parm [ax] [bx dx] modify exact [ax bx cx dx]
 
-#define DO_LPT(value, flags, delay)             \
+static void delay(char cnt);
+#pragma aux delay parm [bx] modify exact [bx dx]
+
+#define DO_LPT(value, flags, delay_cnt)         \
   do {                                          \
     unsigned port = config.lpt_port;            \
-    int i;                                      \
     outp(port, (value));                        \
     port += 2;                                  \
     outp(port, (flags));                        \
     outp(port, (flags) ^ PP_INIT);              \
     outp(port, (flags));                        \
-    if (config.enable_patching) {               \
-      delay(port);                              \
-    }                                           \
+    delay(delay_cnt);                           \
   } while (0)
 
-unsigned emulate_opl2_address_io(int port, int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
+void delay(char cnt) {
+  if (config.enable_patching) {
+    do {
+      (volatile) inp(config.lpt_port);
+    } while (--cnt);
+  }
+}
+
+unsigned emulate_opl2_address_io(int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
   if (!is_write) {
     return emulate_read(ax, next_opcode);
   }
-  address = ax;
-  DO_LPT(ax, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE, address_delay);
+  address = ax & 0xFF;
+  DO_LPT(ax, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE, DELAY_OPL2_ADDRESS);
   return ax;
 }
 
-unsigned emulate_opl2_data_io(int port, int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
+unsigned emulate_opl2_data_io(int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
+  static const char d[2] = { DELAY_OPL2_DATA, DELAY_OPL3 };
   if (!is_write) {
     return emulate_read(ax, next_opcode);
   }
   if (address == 4) {
     timer_reg = ax;
   }
-  DO_LPT(ax, PP_INIT | PP_NOT_SELECT, data_delay);
+  DO_LPT(ax, PP_INIT | PP_NOT_SELECT, d[config.opl3]);
   return ax;
+}
+
+unsigned emulate_opl3_high_address_io(int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
+  if (!config.opl3) {
+    return ax;
+  }
+  if (!is_write) {
+    return emulate_read(ax, next_opcode);
+  }
+  address = 0x100 | (ax & 0xFF);
+  DO_LPT(ax, PP_INIT | PP_NOT_STROBE, DELAY_OPL3);
+  return ax;
+}
+
+unsigned emulate_opl3_data_io(int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
+  if (!config.opl3) {
+    return ax;
+  }
+  return emulate_opl2_data_io(is_write, ax, next_opcode);
 }
 
 static unsigned emulate_read(unsigned ax, char _WCI86FAR *next_opcode) {
@@ -172,7 +154,11 @@ static unsigned emulate_read(unsigned ax, char _WCI86FAR *next_opcode) {
   if ((timer_reg & 0xA2) == 2) {
     ax |= 0xA0;
   }
-  ax |= STATUS_LOW_BITS;
+  if (config.opl3) {
+    ax |= STATUS_OPL3_LOW_BITS;
+  } else {
+    ax |= STATUS_OPL2_LOW_BITS;
+  }
 
   if (config.enable_patching) {
     /*
@@ -189,7 +175,7 @@ static unsigned emulate_read(unsigned ax, char _WCI86FAR *next_opcode) {
      * the INs are actually meaningful. So only patch if a register is
      * selected that wouldn't be used in such a routine.
      */
-    if (address >= 0x20) {
+    if ((address & 0xFF) >= 0x20) {
       char _WCI86FAR *opc = next_opcode - 1;
       if (*opc == 0xEC) {
         *opc = 0x90;

@@ -30,7 +30,14 @@ struct vxd_desc_block ddb = {
 };
 
 
-__declspec(naked) static void address_io_handler() {
+static const void *impl[4] = {
+  emulate_opl2_address_io,
+  emulate_opl2_data_io,
+  emulate_opl3_high_address_io,
+  emulate_opl3_data_io
+};
+
+__declspec(naked) static void port_trap() {
   /*
    * eax: data
    * ebx: VM handle
@@ -41,42 +48,20 @@ __declspec(naked) static void address_io_handler() {
   __asm {
     test ecx, not 4
     jnz skip
-    push eax
-    /* Find client CS:IP, calculate linear address */
-    movzx eax, word ptr [ebp + 0x2C]
-    shl eax, 4
-    add eax, dword ptr [ebp + 0x28]
-    /* Put on stack, restore original EAX */
-    xchg eax, dword ptr [esp]
-    call emulate_opl2_address_io
-    ret
-  skip:  /* VMMJmp Simulate_IO */
-    int 0x20
-    dd 0x1001D or 0x8000
-  }
-}
 
-
-__declspec(naked) static void data_io_handler() {
-  /*
-   * eax: data
-   * ebx: VM handle
-   * ecx: IO type
-   * edx: port
-   * ebp: Client_Reg_Struct
-   */
-  __asm {
-    test ecx, not 4
-    jnz skip
-    push eax
+    push ebx
     /* Find client CS:IP, calculate linear address */
-    movzx eax, word ptr [ebp + 0x2C]
-    shl eax, 4
-    add eax, dword ptr [ebp + 0x28]
-    /* Put on stack, restore original EAX */
-    xchg eax, dword ptr [esp]
-    call emulate_opl2_data_io
+    movzx ebx, word ptr [ebp + 0x2C]
+    shl ebx, 4
+    add ebx, dword ptr [ebp + 0x28]
+    push ebx
+    /* Call emulation routine */
+    mov ebx, edx
+    and ebx, 3
+    call dword ptr [impl + ebx*4]
+    pop ebx
     ret
+
   skip:  /* VMMJmp Simulate_IO */
     int 0x20
     dd 0x1001D or 0x8000
@@ -106,7 +91,7 @@ static const char banner[] =
   "  github.com/pdewacht/adlipt\r\n";
 
 static const char usage[] =
-  "Usage: JLOAD JADLIPT.DLL [LPT1|LPT2|LPT3]\r\n";
+  "Usage: JLOAD JADLIPT.DLL [LPT1|LPT2|LPT3] [OPL3]\r\n";
 
 static const char not_present[] =
   "Port not present\r\n";
@@ -117,6 +102,7 @@ static int install(char *cmd_line) {
   puts(banner);
 
   /* Defaults */
+  config.opl3 = 0;
   config.bios_id = 0;
   config.enable_patching = 1;
   config.cpu_type = cpu_type();
@@ -134,14 +120,26 @@ static int install(char *cmd_line) {
     return 0;
   }
 
-  if (Install_IO_Handler(0x388, address_io_handler) != 0) {
+  if (Install_IO_Handler(0x388, port_trap) != 0) {
     goto fail1;
   }
-  if (Install_IO_Handler(0x389, data_io_handler) != 0) {
+  if (Install_IO_Handler(0x389, port_trap) != 0) {
     goto fail2;
+  }
+  if (config.opl3) {
+    if (Install_IO_Handler(0x38A, port_trap) != 0) {
+      goto fail3;
+    }
+    if (Install_IO_Handler(0x38B, port_trap) != 0) {
+      goto fail4;
+    }
   }
   return 1;
 
+ fail4:
+  Remove_IO_Handler(0x38A);
+ fail3:
+  Remove_IO_Handler(0x389);
  fail2:
   Remove_IO_Handler(0x388);
  fail1:
@@ -151,6 +149,10 @@ static int install(char *cmd_line) {
 static int uninstall() {
   Remove_IO_Handler(0x388);
   Remove_IO_Handler(0x389);
+  if (config.opl3) {
+    Remove_IO_Handler(0x38A);
+    Remove_IO_Handler(0x38B);
+  }
   return 1;
 }
 

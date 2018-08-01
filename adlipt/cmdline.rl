@@ -9,6 +9,7 @@ machine cmdline;
 action mode_load      { mode = MODE_LOAD; }
 action mode_unload    { mode = MODE_UNLOAD; }
 action mode_status    { mode = MODE_STATUS; }
+action opt_opl3       { config.opl3 = *p == '3'; }
 action opt_lpt        { config.bios_id = *p - '1'; }
 action opt_nopatch    { config.enable_patching = 0; }
 action opt_forcedelay { config.cpu_type = 100; }
@@ -18,7 +19,8 @@ end = (0 | 13) @{ fbreak; };
 sep = " "+;
 
 load_opt =
-  ( /LPT[123]/i    @opt_lpt
+  ( /OPL[23]/i     @opt_opl3 . /LPT/i?
+  | /LPT[123]/i    @opt_lpt
   | /NOPATCH/i     @opt_nopatch
   | /FORCEDELAY/i  @opt_forcedelay
   );

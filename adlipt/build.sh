@@ -2,7 +2,7 @@
 set -e
 
 VERSION_MAJOR=0
-VERSION_MINOR=71
+VERSION_MINOR=72
 
 CC='wcc -bt=dos -zq -oxhs'
 CC32='wcc386 -mf -zl -zls -zq -oxhs'

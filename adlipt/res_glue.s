@@ -10,6 +10,8 @@
         extern _config : near
         extern emulate_opl2_address_io_ : proc
         extern emulate_opl2_data_io_ : proc
+        extern emulate_opl3_high_address_io_ : proc
+        extern emulate_opl3_data_io_ : proc
 
 
 cmp_ah  macro
@@ -77,55 +79,73 @@ amis_hook_table:
 
 
         even
-_emm386_table:
-        dw 0x0388, emm386_address_handler
-        dw 0x0389, emm386_data_handler
+_impl_table:
+        dw emulate_opl2_address_io_
+        dw emulate_opl2_data_io_
+        dw emulate_opl3_high_address_io_
+        dw emulate_opl3_data_io_
 
-emm386_address_handler:
+NUM_ENTRIES EQU 4
+
+        even
+_emm386_table:
+        dw 0x0388, emm386_handler
+        dw 0x0389, emm386_handler
+        dw 0x038A, emm386_handler
+        dw 0x038B, emm386_handler
+
+emm386_handler:
+        push bx
+        mov bx, dx
+        and bx, 3
+        add bx, bx
         push 0xD8               ; EMM386 selector for user code segment
         push [bp+8]             ; user IP register
-        call emulate_opl2_address_io_
+        call word ptr [_impl_table + bx]
+        pop bx
         clc
 _retf:  retf
 
-emm386_data_handler:
-        push 0xD8
-        push [bp+8]
-        call emulate_opl2_data_io_
-        clc
-        retf
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; QEMM GLUE CODE
 
-
 _qemm_handler:
         iisp_header qemm_next_handler
-        cmp dx, 0x0388
-        jl @@qemm_ignore
-        jz @@qemm_address_handler
-        cmp dx, 0x0389
-        jnz @@qemm_ignore
-@@qemm_data_handler:
-        and cx, 4
+        cmp dx, 0x200
+        jl @@qemm_skip
+        cmp dx, 0x38B
+        jg @@qemm_skip
+        ;; possible match, check the table
         push ds
-        push cs
+        push bx
+        push si
+        mov bx, cs
+        mov ds, bx
+        mov bx, _emm386_table
+        xor si, si
+@@qemm_loop:
+        cmp word ptr [bx], dx
+        je @@qemm_found
+        add bx, 4
+        inc si
+        inc si
+        cmp si, 2*NUM_ENTRIES
+        jne @@qemm_loop
+@@qemm_not_found:
+        pop si
+        pop bx
         pop ds
-        push dword ptr [esp + 0x0A]
-        call emulate_opl2_data_io_
-        pop ds
-        retf
-@@qemm_address_handler:
-        and cx, 4
-        push ds
-        push cs
-        pop ds
-        push dword ptr [esp + 0x0A]
-        call emulate_opl2_address_io_
-        pop ds
-        retf
-@@qemm_ignore:
+@@qemm_skip:
         jmp dword ptr cs:qemm_next_handler
+@@qemm_found:
+        and cx, 4
+        push dword ptr [esp + 0x0E]
+        call word ptr ds:[_impl_table + si]
+        pop si
+        pop bx
+	pop ds
+        retf
 
 
         RESIDENT ends

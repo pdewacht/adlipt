@@ -24,6 +24,7 @@ enum emm_type {
 _Packed struct config {
   unsigned lpt_port;
   char bios_id;
+  char opl3;
   char cpu_type;
   char enable_patching;
 #ifdef _M_I86
@@ -48,12 +49,18 @@ extern struct iisp_header RESIDENT qemm_handler;
 extern char RESIDENT resident_end[];
 
 
-unsigned emulate_opl2_address_io(int port, int is_write, unsigned ax, char _WCI86FAR *next_opcode);
-unsigned emulate_opl2_data_io(int port, int is_write, unsigned ax, char _WCI86FAR *next_opcode);
+unsigned emulate_opl2_address_io(int is_write, unsigned ax, char _WCI86FAR *next_opcode);
+unsigned emulate_opl3_high_address_io(int is_write, unsigned ax, char _WCI86FAR *next_opcode);
+unsigned emulate_opl2_data_io(int is_write, unsigned ax, char _WCI86FAR *next_opcode);
+unsigned emulate_opl3_data_io(int is_write, unsigned ax, char _WCI86FAR *next_opcode);
 #ifdef _M_I86
-#pragma aux emulate_opl2_address_io parm [dx] [cx] [ax] value [ax] modify exact [ax]
-#pragma aux emulate_opl2_data_io parm [dx] [cx] [ax] modify exact [ax]
+#pragma aux emulate_opl2_address_io parm [cx] [ax] value [ax] modify exact [ax]
+#pragma aux emulate_opl3_high_address_io parm [cx] [ax] value [ax] modify exact [ax]
+#pragma aux emulate_opl2_data_io parm [cx] [ax] modify exact [ax]
+#pragma aux emulate_opl3_data_io parm [cx] [ax] modify exact [ax]
 #else
-#pragma aux emulate_opl2_address_io parm [edx] [ecx] [eax] value [eax] modify exact [eax]
-#pragma aux emulate_opl2_data_io parm [edx] [ecx] [eax] modify exact [eax]
+#pragma aux emulate_opl2_address_io parm [ecx] [eax] value [eax] modify exact [eax]
+#pragma aux emulate_opl3_high_address_io parm [ecx] [eax] value [eax] modify exact [eax]
+#pragma aux emulate_opl2_data_io parm [ecx] [eax] modify exact [eax]
+#pragma aux emulate_opl3_data_io parm [cx] [ax] modify exact [ax]
 #endif

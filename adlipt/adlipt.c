@@ -178,7 +178,7 @@ static bool setup_emm386() {
     return false;
   }
 
-  err = emm386_virtualize_io(0x388, 0x389, 2, &emm386_table, (int)&resident_end, &v);
+  err = emm386_virtualize_io(0x388, 0x38B, 4, &emm386_table, (int)&resident_end, &v);
   if (err) {
     cputs("EMM386 I/O virtualization failed\r\n");
     exit(1);
@@ -219,6 +219,7 @@ static void __far *get_qpi_entry_point() {
 static bool setup_qemm() {
   void __far *qpi;
   int version;
+  int i;
 
   qpi = get_qpi_entry_point();
   if (!qpi) {
@@ -229,12 +230,15 @@ static bool setup_qemm() {
     return false;
   }
 
-  if (qpi_get_port_trap(&qpi, 0x388) || qpi_get_port_trap(&qpi, 0x389)) {
-    cputs("Some other program is already intercepting Adlib I/O\r\n");
-    exit(1);
+  for (i = 0; i < 4; i++) {
+    if (qpi_get_port_trap(&qpi, 0x388 + i)) {
+      cputs("Some other program is already intercepting Adlib I/O\r\n");
+      exit(1);
+    }
   }
-  qpi_set_port_trap(&qpi, 0x388);
-  qpi_set_port_trap(&qpi, 0x389);
+  for (i = 0; i < 4; i++) {
+    qpi_set_port_trap(&qpi, 0x388 + i);
+  }
 
   qemm_handler.next_handler = qpi_get_io_callback(&qpi);
   qpi_set_io_callback(&qpi, &qemm_handler);
@@ -247,14 +251,16 @@ static bool setup_qemm() {
 static bool shutdown_qemm(struct config __far *cfg) {
   void __far *qpi;
   struct iisp_header __far *callback;
+  int i;
 
   qpi = get_qpi_entry_point();
   if (!qpi) {
     return false;
   }
 
-  qpi_clear_port_trap(&qpi, 0x388);
-  qpi_clear_port_trap(&qpi, 0x389);
+  for (i = 0; i < 4; i++) {
+    qpi_clear_port_trap(&qpi, 0x388 + i);
+  }
 
   callback = qpi_get_io_callback(&qpi);
   if (FP_SEG(callback) == FP_SEG(cfg)) {
@@ -289,6 +295,9 @@ static void check_jemm(char bios_id) {
   cputs("Detected JEMM memory manager. Use this command instead:\r\n"
         "    JLOAD JADLIPT.DLL LPT");
   putch('1' + bios_id);
+  if (config.opl3) {
+    cputs(" OPL3");
+  }
   cputs("\r\n");
   exit(1);
 }
@@ -324,19 +333,24 @@ static short get_lpt_port(int i) {
 
 
 static void usage(void) {
-  cputs("Usage: ADLIPT [LPT1|LPT2|LPT3]\r\n"
+  cputs("Usage: ADLIPT [LPT1|LPT2|LPT3] [OPL3]\r\n"
         "       ADLIPT STATUS\r\n"
         "       ADLIPT UNLOAD\r\n");
 }
 
 
 static void status(struct config __far *cfg) {
+  cputs("  Status: ");
   if (!cfg) {
-    cputs("  Status: not loaded\r\n");
+    cputs("not loaded\r\n");
     return;
   }
+  cputs("loaded\r\n");
 
-  cputs("  Status: loaded\r\n");
+  cputs("  Mode: ");
+  cputs(cfg->opl3 ? "OPL3LPT" : "OPL2LPT");
+  cputs("\r\n");
+
   cputs("  Port: LPT");
   putch('1' + cfg->bios_id);
   cputs("\r\n");
@@ -363,6 +377,7 @@ int main(void) {
         "  github.com/pdewacht/adlipt\r\n\r\n");
 
   /* Defaults */
+  config.opl3 = 1;
   config.bios_id = 0;
   config.enable_patching = true;
   config.psp = _psp;
