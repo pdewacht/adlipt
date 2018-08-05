@@ -73,8 +73,8 @@ static void write4hex(int x) {
 #define DELAY_OPL2_DATA 35
 #define DELAY_OPL3 6
 
-static char address;
-static short timer_reg;
+static short address;
+static char timer_reg;
 
 static unsigned emulate_read(unsigned ax, char _WCI86FAR *next_opcode);
 #pragma aux emulate_read parm [ax] [bx dx] modify exact [ax bx cx dx]
