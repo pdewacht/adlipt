@@ -94,8 +94,9 @@ static int install(char *cmd_line) {
   puts(banner);
 
   /* Defaults */
-  config.opl3 = 0;
   config.bios_id = 0;
+  config.opl3 = 0;
+  config.sb_base = 0x220;
   config.enable_patching = 1;
   config.cpu_type = cpu_type();
 

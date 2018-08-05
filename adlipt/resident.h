@@ -25,6 +25,7 @@ _Packed struct config {
   unsigned lpt_port;
   char bios_id;
   char opl3;
+  unsigned sb_base;
   char cpu_type;
   char enable_patching;
 #ifdef _M_I86

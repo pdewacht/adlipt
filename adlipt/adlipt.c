@@ -178,7 +178,8 @@ static bool setup_emm386() {
     return false;
   }
 
-  err = emm386_virtualize_io(0x388, 0x38B, 4, &emm386_table, (int)&resident_end, &v);
+  //err = emm386_virtualize_io(0x388, 0x38B, 4, &emm386_table, (int)&resident_end, &v);
+  err = emm386_virtualize_io(0x220, 0x38B, 4+2+4, &emm386_table, (int)&resident_end, &v);
   if (err) {
     cputs("EMM386 I/O virtualization failed\r\n");
     exit(1);
@@ -231,13 +232,19 @@ static bool setup_qemm() {
   }
 
   for (i = 0; i < 4; i++) {
-    if (qpi_get_port_trap(&qpi, 0x388 + i)) {
+    if (qpi_get_port_trap(&qpi, 0x388 + i) ||
+        qpi_get_port_trap(&qpi, 0x220 + i) ||
+        qpi_get_port_trap(&qpi, 0x228 + i)) {
       cputs("Some other program is already intercepting Adlib I/O\r\n");
       exit(1);
     }
   }
   for (i = 0; i < 4; i++) {
     qpi_set_port_trap(&qpi, 0x388 + i);
+    qpi_set_port_trap(&qpi, 0x220 + i);
+    if (i < 2) {
+      qpi_set_port_trap(&qpi, 0x228 + i);
+    }
   }
 
   qemm_handler.next_handler = qpi_get_io_callback(&qpi);
@@ -260,6 +267,10 @@ static bool shutdown_qemm(struct config __far *cfg) {
 
   for (i = 0; i < 4; i++) {
     qpi_clear_port_trap(&qpi, 0x388 + i);
+    qpi_clear_port_trap(&qpi, 0x220 + i);
+    if (i < 2) {
+      qpi_clear_port_trap(&qpi, 0x228 + i);
+    }
   }
 
   callback = qpi_get_io_callback(&qpi);
@@ -377,8 +388,9 @@ int main(void) {
         "  github.com/pdewacht/adlipt\r\n\r\n");
 
   /* Defaults */
-  config.opl3 = 1;
   config.bios_id = 0;
+  config.opl3 = 1;
+  config.sb_base = 0x220;
   config.enable_patching = true;
   config.psp = _psp;
   config.cpu_type = cpu_type();

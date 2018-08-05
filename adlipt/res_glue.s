@@ -88,6 +88,12 @@ _retf:  retf
 
         even
 _emm386_table:
+        dw 0x0220, emm386_handler
+        dw 0x0221, emm386_handler
+        dw 0x0222, emm386_handler
+        dw 0x0223, emm386_handler
+        dw 0x0228, emm386_handler
+        dw 0x0229, emm386_handler
         dw 0x0388, emm386_handler
         dw 0x0389, emm386_handler
         dw 0x038A, emm386_handler

@@ -73,15 +73,34 @@ static porthandler * const adlib_table[4][2] = {
   { emulate_opl3_read, emulate_opl3_write_data }
 };
 
+static porthandler * const sb_table[16][2] = {
+  { emulate_opl3_read, emulate_opl3_write_low_address },
+  { emulate_opl3_read, emulate_opl3_write_data },
+  { emulate_opl3_read, emulate_opl3_write_high_address },
+  { emulate_opl3_read, emulate_opl3_write_data },
+  { NULL, NULL },
+  { NULL, NULL },
+  { NULL, NULL },
+  { NULL, NULL },
+  { emulate_opl2_read, emulate_opl2_write_address },
+  { emulate_opl2_read, emulate_opl2_write_data },
+  { NULL, NULL },
+  { NULL, NULL },
+  { NULL, NULL },
+  { NULL, NULL },
+  { NULL, NULL },
+  { NULL, NULL }
+};
+
 porthandler *get_port_handler(unsigned port, unsigned flags) {
   porthandler * const (*table)[2];
   int base;
   if ((base = (port & ~0x3)) == 0x388) {
     table = adlib_table;
   }
-  /* else if (sb_base && (base = (port & ~0xF)) == sb_base) { */
-  /*   table = sb_pairs; */
-  /* } */
+  else if (config.sb_base && (base = (port & ~0xF)) == config.sb_base) {
+    table = sb_table;
+  }
   else {
     return 0;
   }
