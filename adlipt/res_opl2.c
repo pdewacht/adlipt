@@ -64,6 +64,31 @@ static void write4hex(int x) {
 }
 
 
+/* I/O dispatching */
+
+static porthandler * const adlib_table[4][2] = {
+  { emulate_opl2_read, emulate_opl2_write_address },
+  { emulate_opl2_read, emulate_opl2_write_data },
+  { emulate_opl3_read, emulate_opl3_write_high_address },
+  { emulate_opl3_read, emulate_opl3_write_data }
+};
+
+porthandler *get_port_handler(unsigned port, unsigned flags) {
+  porthandler * const (*table)[2];
+  int base;
+  if ((base = (port & ~0x3)) == 0x388) {
+    table = adlib_table;
+  }
+  /* else if (sb_base && (base = (port & ~0xF)) == sb_base) { */
+  /*   table = sb_pairs; */
+  /* } */
+  else {
+    return 0;
+  }
+  return table[port & ~base][(flags >> 2) & 1];
+}
+
+
 /* I/O virtualization */
 
 #define STATUS_OPL2_LOW_BITS 0x06
@@ -73,16 +98,13 @@ static void write4hex(int x) {
 #define DELAY_OPL2_DATA 35
 #define DELAY_OPL3 6
 
+char _WCI86FAR * RESIDENT port_trap_ip;
+
 static short address;
 static char timer_reg;
 
-static unsigned emulate_read(unsigned ax, char _WCI86FAR *next_opcode);
-#pragma aux emulate_read parm [ax] [bx dx] modify exact [ax bx cx dx]
 
-static void delay(char cnt);
-#pragma aux delay parm [bx] modify exact [bx dx]
-
-#define DO_LPT(value, flags, delay_cnt)         \
+#define DO_LPT(value, flags)                    \
   do {                                          \
     unsigned port = config.lpt_port;            \
     outp(port, (value));                        \
@@ -90,8 +112,10 @@ static void delay(char cnt);
     outp(port, (flags));                        \
     outp(port, (flags) ^ PP_INIT);              \
     outp(port, (flags));                        \
-    delay(delay_cnt);                           \
   } while (0)
+
+
+#pragma aux delay parm [bx] modify exact [bx dx]
 
 void delay(char cnt) {
   if (config.enable_patching) {
@@ -101,47 +125,49 @@ void delay(char cnt) {
   }
 }
 
-unsigned emulate_opl2_address_io(int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
-  if (!is_write) {
-    return emulate_read(ax, next_opcode);
-  }
+
+unsigned emulate_opl2_write_address(unsigned ax) {
   address = ax & 0xFF;
-  DO_LPT(ax, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE, DELAY_OPL2_ADDRESS);
+  DO_LPT(ax, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE);
+  delay(DELAY_OPL2_ADDRESS);
   return ax;
 }
 
-unsigned emulate_opl2_data_io(int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
-  static const char d[2] = { DELAY_OPL2_DATA, DELAY_OPL3 };
-  if (!is_write) {
-    return emulate_read(ax, next_opcode);
-  }
+unsigned emulate_opl2_write_data(unsigned ax) {
+  static const char delay_cnt[2] = { DELAY_OPL2_DATA, DELAY_OPL3 };
   if (address == 4) {
     timer_reg = ax;
   }
-  DO_LPT(ax, PP_INIT | PP_NOT_SELECT, d[config.opl3]);
+  DO_LPT(ax, PP_INIT | PP_NOT_SELECT);
+  delay(delay_cnt[config.opl3]);
   return ax;
 }
 
-unsigned emulate_opl3_high_address_io(int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
+unsigned emulate_opl3_write_low_address(unsigned ax) {
   if (!config.opl3) {
     return ax;
   }
-  if (!is_write) {
-    return emulate_read(ax, next_opcode);
+  return emulate_opl2_write_address(ax);
+}
+
+unsigned emulate_opl3_write_high_address(unsigned ax) {
+  if (!config.opl3) {
+    return ax;
   }
   address = 0x100 | (ax & 0xFF);
-  DO_LPT(ax, PP_INIT | PP_NOT_STROBE, DELAY_OPL3);
+  DO_LPT(ax, PP_INIT | PP_NOT_STROBE);
+  delay(DELAY_OPL3);
   return ax;
 }
 
-unsigned emulate_opl3_data_io(int is_write, unsigned ax, char _WCI86FAR *next_opcode) {
+unsigned emulate_opl3_write_data(unsigned ax) {
   if (!config.opl3) {
     return ax;
   }
-  return emulate_opl2_data_io(is_write, ax, next_opcode);
+  return emulate_opl2_write_data(ax);
 }
 
-static unsigned emulate_read(unsigned ax, char _WCI86FAR *next_opcode) {
+unsigned emulate_opl2_read(unsigned ax) {
   /*
    * Emulate the timers. We let them expire instantaneously.
    * So far I haven't found any software that uses the timers for
@@ -176,7 +202,7 @@ static unsigned emulate_read(unsigned ax, char _WCI86FAR *next_opcode) {
      * selected that wouldn't be used in such a routine.
      */
     if ((address & 0xFF) >= 0x20) {
-      char _WCI86FAR *opc = next_opcode - 1;
+      char _WCI86FAR *opc = port_trap_ip - 1;
       if (*opc == 0xEC) {
         *opc = 0x90;
       }
@@ -194,4 +220,11 @@ static unsigned emulate_read(unsigned ax, char _WCI86FAR *next_opcode) {
   }
 
   return ax;
+}
+
+unsigned emulate_opl3_read(unsigned ax) {
+  if (!config.opl3) {
+    return 0;
+  }
+  return emulate_opl2_read(ax);
 }

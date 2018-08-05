@@ -8,10 +8,8 @@
         public _qemm_handler
 
         extern _config : near
-        extern emulate_opl2_address_io_ : proc
-        extern emulate_opl2_data_io_ : proc
-        extern emulate_opl3_high_address_io_ : proc
-        extern emulate_opl3_data_io_ : proc
+        extern _port_trap_ip : near
+        extern get_port_handler_ : proc
 
 
 cmp_ah  macro
@@ -77,15 +75,16 @@ amis_hook_table:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; EMM386 GLUE CODE
 
-
-        even
-_impl_table:
-        dw emulate_opl2_address_io_
-        dw emulate_opl2_data_io_
-        dw emulate_opl3_high_address_io_
-        dw emulate_opl3_data_io_
-
-NUM_ENTRIES EQU 4
+emm386_handler:
+        push bx
+        mov bx, [bp+8]
+        mov word ptr [_port_trap_ip+2], 0xD8    ; EMM386 selector for user code segment
+        mov word ptr [_port_trap_ip], bx        ; user IP register
+        call get_port_handler_
+        call bx
+        pop bx
+        clc
+_retf:  retf
 
         even
 _emm386_table:
@@ -93,18 +92,6 @@ _emm386_table:
         dw 0x0389, emm386_handler
         dw 0x038A, emm386_handler
         dw 0x038B, emm386_handler
-
-emm386_handler:
-        push bx
-        mov bx, dx
-        and bx, 3
-        add bx, bx
-        push 0xD8               ; EMM386 selector for user code segment
-        push [bp+8]             ; user IP register
-        call word ptr [_impl_table + bx]
-        pop bx
-        clc
-_retf:  retf
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -114,38 +101,30 @@ _qemm_handler:
         iisp_header qemm_next_handler
         cmp dx, 0x200
         jl @@qemm_skip
-        cmp dx, 0x38B
-        jg @@qemm_skip
-        ;; possible match, check the table
+
         push ds
-        push bx
-        push si
+        push ebx
         mov bx, cs
         mov ds, bx
-        mov bx, _emm386_table
-        xor si, si
-@@qemm_loop:
-        cmp word ptr [bx], dx
-        je @@qemm_found
-        add bx, 4
-        inc si
-        inc si
-        cmp si, 2*NUM_ENTRIES
-        jne @@qemm_loop
-@@qemm_not_found:
-        pop si
-        pop bx
+
+        mov bx, sp
+        mov ebx, dword ptr ss:[bx + 0x0E]
+        mov dword ptr ds:[_port_trap_ip], ebx
+
+        call get_port_handler_
+        test bx, bx
+        je @@qemm_not_for_us
+        call bx
+
+        pop ebx
+        pop ds
+        retf
+
+@@qemm_not_for_us:
+        pop ebx
         pop ds
 @@qemm_skip:
         jmp dword ptr cs:qemm_next_handler
-@@qemm_found:
-        and cx, 4
-        push dword ptr [esp + 0x0E]
-        call word ptr ds:[_impl_table + si]
-        pop si
-        pop bx
-	pop ds
-        retf
 
 
         RESIDENT ends

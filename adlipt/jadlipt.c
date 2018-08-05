@@ -30,13 +30,6 @@ struct vxd_desc_block ddb = {
 };
 
 
-static const void *impl[4] = {
-  emulate_opl2_address_io,
-  emulate_opl2_data_io,
-  emulate_opl3_high_address_io,
-  emulate_opl3_data_io
-};
-
 __declspec(naked) static void port_trap() {
   /*
    * eax: data
@@ -54,11 +47,10 @@ __declspec(naked) static void port_trap() {
     movzx ebx, word ptr [ebp + 0x2C]
     shl ebx, 4
     add ebx, dword ptr [ebp + 0x28]
-    push ebx
+    mov dword ptr [port_trap_ip], ebx
     /* Call emulation routine */
-    mov ebx, edx
-    and ebx, 3
-    call dword ptr [impl + ebx*4]
+    call get_port_handler
+    call ebx
     pop ebx
     ret
 
