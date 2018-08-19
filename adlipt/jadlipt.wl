@@ -2,6 +2,7 @@ name jadlipt
 
 file jadlipt
 file jlm_opl2
+file jlm_cmdl
 
 system nt_dll
 runtime console

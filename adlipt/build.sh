@@ -2,7 +2,7 @@
 set -e
 
 VERSION_MAJOR=0
-VERSION_MINOR=7
+VERSION_MINOR=73
 
 CC='wcc -bt=dos -zq -oxhs'
 CC32='wcc386 -mf -zl -zls -zq -oxhs'
@@ -11,13 +11,16 @@ DEFS="-dVERSION_MAJOR=$VERSION_MAJOR -dVERSION_MINOR=$VERSION_MINOR"
 #DEFS="$DEFS -dDEBUG"
 
 set -x
+ragel -T1 cmdline.rl
 $CC $DEFS adlipt.c
+$CC $DEFS cmdline.c
 $CC $DEFS res_opl2.c
 $AS $DEFS res_glue.s
 $AS $DEFS res_end.s
 wlink @adlipt.wl
 
 $CC32 $DEFS jadlipt.c
+$CC32 $DEFS -fo=jlm_cmdl.o cmdline.c
 $CC32 $DEFS -fo=jlm_opl2.o res_opl2.c
 wlink @jadlipt.wl
 python3 patchpe.py jadlipt.dll

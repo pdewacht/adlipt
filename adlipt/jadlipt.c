@@ -1,5 +1,7 @@
+#include <stddef.h>
 #include "jlm.h"
 #include "resident.h"
+#include "cmdline.h"
 #include "cputype.h"
 
 #define STR(x) #x
@@ -28,7 +30,7 @@ struct vxd_desc_block ddb = {
 };
 
 
-__declspec(naked) static void address_io_handler() {
+__declspec(naked) static void port_trap() {
   /*
    * eax: data
    * ebx: VM handle
@@ -39,55 +41,25 @@ __declspec(naked) static void address_io_handler() {
   __asm {
     test ecx, not 4
     jnz skip
-    push eax
+
+    push ebx
     /* Find client CS:IP, calculate linear address */
-    movzx eax, word ptr [ebp + 0x2C]
-    shl eax, 4
-    add eax, dword ptr [ebp + 0x28]
-    /* Put on stack, restore original EAX */
-    xchg eax, dword ptr [esp]
-    call emulate_adlib_address_io
+    movzx ebx, word ptr [ebp + 0x2C]
+    shl ebx, 4
+    add ebx, dword ptr [ebp + 0x28]
+    mov dword ptr [port_trap_ip], ebx
+    /* Call emulation routine */
+    call get_port_handler
+    call ebx
+    pop ebx
     ret
+
   skip:  /* VMMJmp Simulate_IO */
     int 0x20
     dd 0x1001D or 0x8000
   }
 }
 
-
-__declspec(naked) static void data_io_handler() {
-  /*
-   * eax: data
-   * ebx: VM handle
-   * ecx: IO type
-   * edx: port
-   * ebp: Client_Reg_Struct
-   */
-  __asm {
-    test ecx, not 4
-    jnz skip
-    push eax
-    /* Find client CS:IP, calculate linear address */
-    movzx eax, word ptr [ebp + 0x2C]
-    shl eax, 4
-    add eax, dword ptr [ebp + 0x28]
-    /* Put on stack, restore original EAX */
-    xchg eax, dword ptr [esp]
-    call emulate_adlib_data_io
-    ret
-  skip:  /* VMMJmp Simulate_IO */
-    int 0x20
-    dd 0x1001D or 0x8000
-  }
-}
-
-
-int bswap(int);
-#pragma aux bswap =                             \
-  "rol ax, 8"                                   \
-  "rol eax, 16"                                 \
-  "rol ax, 8"                                   \
-  parm [eax] value [eax]
 
 static void puts(const char *str) {
   struct cb_s *hVM = Get_Cur_VM_Handle();
@@ -111,47 +83,56 @@ static const char banner[] =
   "  github.com/pdewacht/adlipt\r\n";
 
 static const char usage[] =
-  "Usage: JLOAD JADLIPT.DLL LPT1|LPT2|LPT3\r\n";
+  "Usage: JLOAD JADLIPT.DLL [LPT1|LPT2|LPT3] [OPL3]\r\n";
 
 static const char not_present[] =
   "Port not present\r\n";
 
 static int install(char *cmd_line) {
-  unsigned param;
-  short port;
-  int res;
+  enum mode mode;
 
   puts(banner);
 
-  while (*cmd_line == ' ') {
-    cmd_line++;
-  }
-  param = *(unsigned *)cmd_line;
-  param = (bswap(param) & ~0x20202000) - 'LPT1';
-  if (param > 2) {
+  /* Defaults */
+  config.bios_id = 0;
+  config.opl3 = 0;
+  config.sb_base = 0x220;
+  config.enable_patching = 1;
+  config.cpu_type = cpu_type();
+
+  mode = parse_command_line(cmd_line);
+
+  if (mode != MODE_LOAD) {
     puts(usage);
     return 0;
   }
 
-  port = get_lpt_port(param + 1);
-  if (!port) {
+  config.lpt_port = get_lpt_port(config.bios_id + 1);
+  if (!config.lpt_port) {
     puts(not_present);
     return 0;
   }
 
-  config.lpt_port = port;
-  config.bios_id = param;
-  config.cpu_type = cpu_type();
-  config.enable_patching = 1;
-
-  if (Install_IO_Handler(0x388, address_io_handler) != 0) {
+  if (Install_IO_Handler(0x388, port_trap) != 0) {
     goto fail1;
   }
-  if (Install_IO_Handler(0x389, data_io_handler) != 0) {
+  if (Install_IO_Handler(0x389, port_trap) != 0) {
     goto fail2;
+  }
+  if (config.opl3) {
+    if (Install_IO_Handler(0x38A, port_trap) != 0) {
+      goto fail3;
+    }
+    if (Install_IO_Handler(0x38B, port_trap) != 0) {
+      goto fail4;
+    }
   }
   return 1;
 
+ fail4:
+  Remove_IO_Handler(0x38A);
+ fail3:
+  Remove_IO_Handler(0x389);
  fail2:
   Remove_IO_Handler(0x388);
  fail1:
@@ -161,6 +142,10 @@ static int install(char *cmd_line) {
 static int uninstall() {
   Remove_IO_Handler(0x388);
   Remove_IO_Handler(0x389);
+  if (config.opl3) {
+    Remove_IO_Handler(0x38A);
+    Remove_IO_Handler(0x38B);
+  }
   return 1;
 }
 

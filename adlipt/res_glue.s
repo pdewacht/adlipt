@@ -8,8 +8,8 @@
         public _qemm_handler
 
         extern _config : near
-        extern emulate_adlib_address_io_ : proc
-        extern emulate_adlib_data_io_ : proc
+        extern _port_trap_ip : near
+        extern get_port_handler_ : proc
 
 
 cmp_ah  macro
@@ -75,56 +75,61 @@ amis_hook_table:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; EMM386 GLUE CODE
 
-
-        even
-_emm386_table:
-        dw 0x0388, emm386_address_handler
-        dw 0x0389, emm386_data_handler
-
-emm386_address_handler:
-        push 0xD8               ; EMM386 selector for user code segment
-        push [bp+8]             ; user IP register
-        call emulate_adlib_address_io_
+emm386_handler:
+        push bx
+        mov bx, [bp+8]
+        mov word ptr [_port_trap_ip+2], 0xD8    ; EMM386 selector for user code segment
+        mov word ptr [_port_trap_ip], bx        ; user IP register
+        call get_port_handler_
+        call bx
+        pop bx
         clc
 _retf:  retf
 
-emm386_data_handler:
-        push 0xD8
-        push [bp+8]
-        call emulate_adlib_data_io_
-        clc
-        retf
+        even
+_emm386_table:
+        dw 0x0220, emm386_handler
+        dw 0x0221, emm386_handler
+        dw 0x0222, emm386_handler
+        dw 0x0223, emm386_handler
+        dw 0x0228, emm386_handler
+        dw 0x0229, emm386_handler
+        dw 0x0388, emm386_handler
+        dw 0x0389, emm386_handler
+        dw 0x038A, emm386_handler
+        dw 0x038B, emm386_handler
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; QEMM GLUE CODE
 
-
 _qemm_handler:
         iisp_header qemm_next_handler
-        cmp dx, 0x0388
-        jl @@qemm_ignore
-        jz @@qemm_address_handler
-        cmp dx, 0x0389
-        jnz @@qemm_ignore
-@@qemm_data_handler:
-        and cx, 4
+        cmp dx, 0x200
+        jl @@qemm_skip
+
         push ds
-        push cs
-        pop ds
-        push dword ptr [esp + 0x0A]
-        call emulate_adlib_data_io_
+        push ebx
+        mov bx, cs
+        mov ds, bx
+
+        mov bx, sp
+        mov ebx, dword ptr ss:[bx + 0x0E]
+        mov dword ptr ds:[_port_trap_ip], ebx
+
+        call get_port_handler_
+        test bx, bx
+        je @@qemm_not_for_us
+        call bx
+
+        pop ebx
         pop ds
         retf
-@@qemm_address_handler:
-        and cx, 4
-        push ds
-        push cs
+
+@@qemm_not_for_us:
+        pop ebx
         pop ds
-        push dword ptr [esp + 0x0A]
-        call emulate_adlib_address_io_
-        pop ds
-        retf
-@@qemm_ignore:
+@@qemm_skip:
         jmp dword ptr cs:qemm_next_handler
 
 

@@ -24,6 +24,8 @@ enum emm_type {
 _Packed struct config {
   unsigned lpt_port;
   char bios_id;
+  char opl3;
+  unsigned sb_base;
   char cpu_type;
   char enable_patching;
 #ifdef _M_I86
@@ -45,21 +47,29 @@ extern char RESIDENT amis_id;
 extern char RESIDENT emm386_table[];
 extern struct iisp_header RESIDENT qemm_handler;
 
+extern char _WCI86FAR * RESIDENT port_trap_ip;
+
 extern char RESIDENT resident_end[];
 
 
+typedef unsigned porthandler(unsigned ax);
 #ifdef _M_I86
-typedef char __far *codeptr;
+#pragma aux porthandler parm [ax] value [ax] modify exact [ax bx]
 #else
-typedef char *codeptr;
+#pragma aux porthandler parm [eax] value [eax] modify exact [eax ebx]
 #endif
 
-unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax, codeptr next_opcode);
-unsigned emulate_adlib_data_io(int port, int is_write, unsigned ax, codeptr next_opcode);
+extern porthandler emulate_opl2_write_address;
+extern porthandler emulate_opl2_write_data;
+extern porthandler emulate_opl3_write_low_address;
+extern porthandler emulate_opl3_write_high_address;
+extern porthandler emulate_opl3_write_data;
+extern porthandler emulate_opl2_read;
+extern porthandler emulate_opl3_read;
+
+porthandler *get_port_handler(unsigned port, unsigned flags);
 #ifdef _M_I86
-#pragma aux emulate_adlib_address_io parm [dx] [cx] [ax] value [ax] modify exact [ax]
-#pragma aux emulate_adlib_data_io parm [dx] [cx] [ax] modify exact [ax]
+#pragma aux get_port_handler parm [dx cx] value [bx] modify exact [bx]
 #else
-#pragma aux emulate_adlib_address_io parm [edx] [ecx] [eax] value [eax] modify exact [eax]
-#pragma aux emulate_adlib_data_io parm [edx] [ecx] [eax] modify exact [eax]
+#pragma aux get_port_handler parm [edx ecx] value [ebx] modify exact [ebx]
 #endif

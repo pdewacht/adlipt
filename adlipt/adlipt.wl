@@ -1,6 +1,7 @@
 name adlipt
 
 file adlipt
+file cmdline
 file res_opl2
 file res_glue
 file res_end

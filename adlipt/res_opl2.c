@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 #pragma code_seg("RESIDENT")
 #pragma data_seg("RESIDENT", "CODE")
 
@@ -17,57 +19,6 @@ static void outp(unsigned port, char value);
 
 static char inp(unsigned port);
 #pragma aux inp =                               \
-  "in al, dx"                                   \
-  parm [dx]                                     \
-  modify exact [ax]
-
-static void address_delay(unsigned port);
-#pragma aux address_delay =                     \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  parm [dx]                                     \
-  modify exact [ax]
-
-static void data_delay(unsigned port);
-#pragma aux data_delay =                        \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
-  "in al, dx"                                   \
   "in al, dx"                                   \
   parm [dx]                                     \
   modify exact [ax]
@@ -113,51 +64,129 @@ static void write4hex(int x) {
 }
 
 
+/* I/O dispatching */
+
+static porthandler * const adlib_table[4][2] = {
+  { emulate_opl2_read, emulate_opl2_write_address },
+  { emulate_opl2_read, emulate_opl2_write_data },
+  { emulate_opl3_read, emulate_opl3_write_high_address },
+  { emulate_opl3_read, emulate_opl3_write_data }
+};
+
+static porthandler * const sb_table[16][2] = {
+  { emulate_opl3_read, emulate_opl3_write_low_address },
+  { emulate_opl3_read, emulate_opl3_write_data },
+  { emulate_opl3_read, emulate_opl3_write_high_address },
+  { emulate_opl3_read, emulate_opl3_write_data },
+  { NULL, NULL },
+  { NULL, NULL },
+  { NULL, NULL },
+  { NULL, NULL },
+  { emulate_opl2_read, emulate_opl2_write_address },
+  { emulate_opl2_read, emulate_opl2_write_data },
+  { NULL, NULL },
+  { NULL, NULL },
+  { NULL, NULL },
+  { NULL, NULL },
+  { NULL, NULL },
+  { NULL, NULL }
+};
+
+porthandler *get_port_handler(unsigned port, unsigned flags) {
+  porthandler * const (*table)[2];
+  int base;
+  if ((base = (port & ~0x3)) == 0x388) {
+    table = adlib_table;
+  }
+  else if (config.sb_base && (base = (port & ~0xF)) == config.sb_base) {
+    table = sb_table;
+  }
+  else {
+    return 0;
+  }
+  return table[port & ~base][(flags >> 2) & 1];
+}
+
+
 /* I/O virtualization */
 
-static char address;
+#define STATUS_OPL2_LOW_BITS 0x06
+#define STATUS_OPL3_LOW_BITS 0x00
+
+#define DELAY_OPL2_ADDRESS 6
+#define DELAY_OPL2_DATA 35
+#define DELAY_OPL3 6
+
+char _WCI86FAR * RESIDENT port_trap_ip;
+
+static short address;
 static char timer_reg;
 
-#define STATUS_LOW_BITS 0x06
 
-static unsigned emulate_read(unsigned ax, codeptr next_opcode);
-#pragma aux emulate_read parm [ax] [bx dx] modify exact [ax bx cx dx]
-
-#define DO_LPT(value, flags, delay)             \
+#define DO_LPT(value, flags)                    \
   do {                                          \
     unsigned port = config.lpt_port;            \
-    int i;                                      \
     outp(port, (value));                        \
     port += 2;                                  \
     outp(port, (flags));                        \
     outp(port, (flags) ^ PP_INIT);              \
     outp(port, (flags));                        \
-    if (config.enable_patching) {               \
-      delay(port);                              \
-    }                                           \
   } while (0)
 
-unsigned emulate_adlib_address_io(int port, int is_write, unsigned ax, codeptr next_opcode) {
-  if (!is_write) {
-    return emulate_read(ax, next_opcode);
+
+#pragma aux delay parm [bx] modify exact [bx dx]
+
+void delay(char cnt) {
+  if (config.enable_patching) {
+    do {
+      (volatile) inp(config.lpt_port);
+    } while (--cnt);
   }
-  address = ax;
-  DO_LPT(ax, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE, address_delay);
+}
+
+
+unsigned emulate_opl2_write_address(unsigned ax) {
+  address = ax & 0xFF;
+  DO_LPT(ax, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE);
+  delay(DELAY_OPL2_ADDRESS);
   return ax;
 }
 
-unsigned emulate_adlib_data_io(int port, int is_write, unsigned ax, codeptr next_opcode) {
-  if (!is_write) {
-    return emulate_read(ax, next_opcode);
-  }
+unsigned emulate_opl2_write_data(unsigned ax) {
+  static const char delay_cnt[2] = { DELAY_OPL2_DATA, DELAY_OPL3 };
   if (address == 4) {
     timer_reg = ax;
   }
-  DO_LPT(ax, PP_INIT | PP_NOT_SELECT, data_delay);
+  DO_LPT(ax, PP_INIT | PP_NOT_SELECT);
+  delay(delay_cnt[config.opl3]);
   return ax;
 }
 
-static unsigned emulate_read(unsigned ax, codeptr next_opcode) {
+unsigned emulate_opl3_write_low_address(unsigned ax) {
+  if (!config.opl3) {
+    return ax;
+  }
+  return emulate_opl2_write_address(ax);
+}
+
+unsigned emulate_opl3_write_high_address(unsigned ax) {
+  if (!config.opl3) {
+    return ax;
+  }
+  address = 0x100 | (ax & 0xFF);
+  DO_LPT(ax, PP_INIT | PP_NOT_STROBE);
+  delay(DELAY_OPL3);
+  return ax;
+}
+
+unsigned emulate_opl3_write_data(unsigned ax) {
+  if (!config.opl3) {
+    return ax;
+  }
+  return emulate_opl2_write_data(ax);
+}
+
+unsigned emulate_opl2_read(unsigned ax) {
   /*
    * Emulate the timers. We let them expire instantaneously.
    * So far I haven't found any software that uses the timers for
@@ -170,7 +199,11 @@ static unsigned emulate_read(unsigned ax, codeptr next_opcode) {
   if ((timer_reg & 0xA2) == 2) {
     ax |= 0xA0;
   }
-  ax |= STATUS_LOW_BITS;
+  if (config.opl3) {
+    ax |= STATUS_OPL3_LOW_BITS;
+  } else {
+    ax |= STATUS_OPL2_LOW_BITS;
+  }
 
   if (config.enable_patching) {
     /*
@@ -187,8 +220,8 @@ static unsigned emulate_read(unsigned ax, codeptr next_opcode) {
      * the INs are actually meaningful. So only patch if a register is
      * selected that wouldn't be used in such a routine.
      */
-    if (address >= 0x20) {
-      codeptr opc = next_opcode - 1;
+    if ((address & 0xFF) >= 0x20) {
+      char _WCI86FAR *opc = port_trap_ip - 1;
       if (*opc == 0xEC) {
         *opc = 0x90;
       }
@@ -206,4 +239,11 @@ static unsigned emulate_read(unsigned ax, codeptr next_opcode) {
   }
 
   return ax;
+}
+
+unsigned emulate_opl3_read(unsigned ax) {
+  if (!config.opl3) {
+    return 0;
+  }
+  return emulate_opl2_read(ax);
 }
