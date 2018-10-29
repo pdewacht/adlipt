@@ -86,61 +86,80 @@ void OPL2::init(LPT_PORT lpt_base) {
 /**
  * Send the given byte of data to the given register of the OPL2 chip.
  */
-void OPL2::write(byte reg, byte data) {
+void OPL2::write(unsigned reg, byte data) {
+	const byte a0_0 = PP_NOT_SELECT | PP_NOT_STROBE | PP_INIT;
+	const byte a0_1 = PP_NOT_SELECT | PP_NOT_STROBE;
+	const byte a0_2 = PP_NOT_SELECT | PP_NOT_STROBE | PP_INIT;
+	const byte a1_0 = PP_NOT_STROBE | PP_INIT;
+	const byte a1_1 = PP_NOT_STROBE;
+	const byte a1_2 = PP_NOT_STROBE | PP_INIT;
+	const byte d_0  = PP_NOT_SELECT | PP_INIT;
+	const byte d_1  = PP_NOT_SELECT;
+	const byte d_2  = PP_NOT_SELECT | PP_INIT;
+
 #ifdef ADLIB
 
-	outp(0x388, reg);
-	for (int i = 0; i < 6; i++) {
-		(volatile) inp(0x388);
-	}
-	outp(0x389, data);
-	for (int i = 0; i < 35; i++) {
-		(volatile) inp(0x388);
+	if (reg < 0x100) {
+		outp(0x388, reg);
+		for (int i = 0; i < 6; i++) {
+			(volatile) inp(0x388);
+		}
+		outp(0x389, data);
+		for (int i = 0; i < 35; i++) {
+			(volatile) inp(0x388);
+		}
 	}
 
-#else /* !ADLIB */
-	static byte b[] = {
-		PP_NOT_SELECT | PP_NOT_STROBE | PP_INIT,
-		PP_NOT_SELECT | PP_NOT_STROBE,
-		PP_NOT_SELECT | PP_NOT_STROBE | PP_INIT,
+#elif __linux__
 
-		PP_NOT_SELECT | PP_INIT,
-		PP_NOT_SELECT,
-		PP_NOT_SELECT | PP_INIT
-	};
 	if (lpt_base == 0) {
 		return;
 	}
-#ifdef __linux__
 	ieee1284_write_data(lpt_base, reg);
-	ieee1284_write_control(lpt_base, b[0] ^ C1284_INVERTED);
-	ieee1284_write_control(lpt_base, b[1] ^ C1284_INVERTED);
-	ieee1284_write_control(lpt_base, b[2] ^ C1284_INVERTED);
+	if (reg < 0x100) {
+		ieee1284_write_control(lpt_base, a0_0 ^ C1284_INVERTED);
+		ieee1284_write_control(lpt_base, a0_1 ^ C1284_INVERTED);
+		ieee1284_write_control(lpt_base, a0_2 ^ C1284_INVERTED);
+	} else {
+		ieee1284_write_control(lpt_base, a1_0 ^ C1284_INVERTED);
+		ieee1284_write_control(lpt_base, a1_1 ^ C1284_INVERTED);
+		ieee1284_write_control(lpt_base, a1_2 ^ C1284_INVERTED);
+	}
 	usleep(4);		// 3.3 us
-
 	ieee1284_write_data(lpt_base, data);
-	ieee1284_write_control(lpt_base, b[3] ^ C1284_INVERTED);
-	ieee1284_write_control(lpt_base, b[4] ^ C1284_INVERTED);
-	ieee1284_write_control(lpt_base, b[5] ^ C1284_INVERTED);
+	ieee1284_write_control(lpt_base, d_0 ^ C1284_INVERTED);
+	ieee1284_write_control(lpt_base, d_1 ^ C1284_INVERTED);
+	ieee1284_write_control(lpt_base, d_2 ^ C1284_INVERTED);
 	usleep(23);
-#else /* !__linux__ */
+
+#else
+
+	if (lpt_base == 0) {
+		return;
+	}
 	int lpt_data = lpt_base;
 	int lpt_ctrl = lpt_base + 2;
 	outp(lpt_data, reg);
-	outp(lpt_ctrl, b[0]);
-	outp(lpt_ctrl, b[1]);
-	outp(lpt_ctrl, b[2]);
+	if (reg < 0x100) {
+		outp(lpt_ctrl, a0_0);
+		outp(lpt_ctrl, a0_1);
+		outp(lpt_ctrl, a0_2);
+	} else {
+		outp(lpt_ctrl, a1_0);
+		outp(lpt_ctrl, a1_1);
+		outp(lpt_ctrl, a1_2);
+	}
 	for (int i = 0; i < 6; i++) {
 		(volatile) inp(lpt_ctrl);
 	}
 	outp(lpt_data, data);
-	outp(lpt_ctrl, b[3]);
-	outp(lpt_ctrl, b[4]);
-	outp(lpt_ctrl, b[5]);
+	outp(lpt_ctrl, d_0);
+	outp(lpt_ctrl, d_1);
+	outp(lpt_ctrl, d_2);
 	for (int i = 0; i < 35; i++) {
 		(volatile) inp(lpt_ctrl);
 	}
-#endif
+
 #endif
 }
 
@@ -160,6 +179,8 @@ byte OPL2::getRegisterOffset(byte ch, bool op2) {
 void OPL2::reset() {
 	for(int i = 0; i < 256; i ++) {
 		oplRegisters[i] = 0x00;
+	}
+	for(int i = 0; i < 512; i ++) {
 		write(i, 0x00);
 	}
 }
@@ -691,4 +712,13 @@ byte OPL2::getWaveForm(byte ch, bool op) {
 byte OPL2::setWaveForm(byte ch, bool op, byte waveForm) {
 	byte reg = 0xE0 + getRegisterOffset(ch, op);
 	return setRegister(reg, (oplRegisters[reg] & 0xFC) | (waveForm & 0x03));
+}
+
+void OPL2::setOPL3Mode(bool enable) {
+	write(0x105, enable);
+}
+
+byte OPL2::setOPL3Channels(byte ch, byte enabled) {
+	 byte reg = 0xC0 + max(0x00, min(ch, 0x08));
+	 return setRegister(reg, (oplRegisters[reg] & 0x0F) | (enabled << 4));
 }

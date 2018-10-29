@@ -60,7 +60,7 @@
 			OPL2();
 			void init(LPT_PORT lpt_base);
 			void reset();
-			void write(byte, byte);
+			void write(unsigned, byte);
 
 			short getNoteFrequency(byte, byte, byte);
 			byte getRegister(byte);
@@ -111,6 +111,9 @@
 			byte setPercussion(bool);
 			byte setDrums(bool, bool, bool, bool, bool);
 			byte setWaveForm(byte, bool, byte);
+
+			void setOPL3Mode(bool);
+			byte setOPL3Channels(byte, byte);
 
 		private:
 			const static unsigned fIntervals[8];

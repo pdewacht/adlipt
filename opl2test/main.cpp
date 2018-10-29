@@ -64,6 +64,8 @@ static void __interrupt __far ctrlc_handler()
   interrupted = 1;
 }
 
+#ifndef OPL3
+
 int main(void)
 {
   cputs("== OPL2LPT test program (" XSTR(VERSION) ") ==\r\n\r\n");
@@ -73,7 +75,6 @@ int main(void)
     getch();
   } while (kbhit());
   _dos_setvect(0x23, ctrlc_handler);
-  extern OPL2 opl2;
   opl2.init(lpt_base);
   music_setup();
   cputs("\r\n\r\nPress any key to stop...");
@@ -87,3 +88,51 @@ int main(void)
   cputs("\r\n\r\n");
   return 0;
 }
+
+#else
+
+static void channels(byte n) {
+  opl2.setOPL3Channels(0, n);
+  opl2.setOPL3Channels(1, n);
+  opl2.setOPL3Channels(2, n);
+}
+
+int main(void)
+{
+  cputs("== OPL3LPT test program (" XSTR(VERSION) ") ==\r\n\r\n");
+  short lpt_base = setup();
+  cputs("\r\nPress any key to play some music...");
+  do {
+    getch();
+  } while (kbhit());
+  _dos_setvect(0x23, ctrlc_handler);
+  opl2.init(lpt_base);
+  opl2.setOPL3Mode(true);
+  music_setup();
+  channels(3);
+  cputs("\r\n\r\n"
+        "Press [L] for left channel only\r\n"
+        "Press [R] for right channel only\r\n"
+        "Press [B] for both channels\r\n"
+        "Press any other key to stop...");
+  while (!interrupted) {
+    music_loop();
+    if (kbhit()) {
+      switch (getch()) {
+      case 'L': case 'l': channels(1); break;
+      case 'R': case 'r': channels(2); break;
+      case 'B': case 'b': channels(3); break;
+      default: interrupted = true; break;
+      }
+    }
+  }
+  music_shutdown();
+  opl2.setOPL3Mode(false);
+  while (kbhit()) {
+    getch();
+  }
+  cputs("\r\n\r\n");
+  return 0;
+}
+
+#endif
