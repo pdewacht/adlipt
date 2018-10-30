@@ -84,8 +84,10 @@ _Packed struct jlcomm {
   unsigned short ldr_cs;
   unsigned short flags;
   char *cmd_line;
-  unsigned request;
-  unsigned drivers;
+  union {
+    unsigned request;
+    unsigned drivers;
+  };
 };
 
 _Packed struct Client_Reg_Struc {

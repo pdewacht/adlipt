@@ -163,7 +163,7 @@ static bool amis_unhook(struct iisp_header __far *handler, unsigned our_seg) {
 
 static bool setup_emm386() {
   unsigned char version[2];
-  int handle, err, v;
+  int handle, err, v, i, *ports;
 
   err = _dos_open("EMMXXXX0", O_RDONLY, &handle);
   if (err) {
@@ -178,8 +178,12 @@ static bool setup_emm386() {
     return false;
   }
 
-  //err = emm386_virtualize_io(0x388, 0x38B, 4, &emm386_table, (int)&resident_end, &v);
-  err = emm386_virtualize_io(0x220, 0x38B, 4+2+4, &emm386_table, (int)&resident_end, &v);
+  ports = collect_ports(&config);
+  for (i = 0; ports[i]; i++) {
+    emm386_table[2*i] = ports[i];
+  }
+
+  err = emm386_virtualize_io(0x200, 0x38B, i, emm386_table, (int)&resident_end, &v);
   if (err) {
     cputs("EMM386 I/O virtualization failed\r\n");
     exit(1);
@@ -220,7 +224,7 @@ static void __far *get_qpi_entry_point() {
 static bool setup_qemm() {
   void __far *qpi;
   int version;
-  int i;
+  int i, *ports;
 
   qpi = get_qpi_entry_point();
   if (!qpi) {
@@ -231,20 +235,15 @@ static bool setup_qemm() {
     return false;
   }
 
-  for (i = 0; i < 4; i++) {
-    if (qpi_get_port_trap(&qpi, 0x388 + i) ||
-        qpi_get_port_trap(&qpi, 0x220 + i) ||
-        qpi_get_port_trap(&qpi, 0x228 + i)) {
+  ports = collect_ports(&config);
+  for (i = 0; ports[i]; i++) {
+    if (qpi_get_port_trap(&qpi, ports[i])) {
       cputs("Some other program is already intercepting Adlib I/O\r\n");
       exit(1);
     }
   }
-  for (i = 0; i < 4; i++) {
-    qpi_set_port_trap(&qpi, 0x388 + i);
-    qpi_set_port_trap(&qpi, 0x220 + i);
-    if (i < 2) {
-      qpi_set_port_trap(&qpi, 0x228 + i);
-    }
+  for (i = 0; ports[i]; i++) {
+    qpi_set_port_trap(&qpi, ports[i]);
   }
 
   qemm_handler.next_handler = qpi_get_io_callback(&qpi);
@@ -258,19 +257,16 @@ static bool setup_qemm() {
 static bool shutdown_qemm(struct config __far *cfg) {
   void __far *qpi;
   struct iisp_header __far *callback;
-  int i;
+  int i, *ports;
 
   qpi = get_qpi_entry_point();
   if (!qpi) {
     return false;
   }
 
-  for (i = 0; i < 4; i++) {
-    qpi_clear_port_trap(&qpi, 0x388 + i);
-    qpi_clear_port_trap(&qpi, 0x220 + i);
-    if (i < 2) {
-      qpi_clear_port_trap(&qpi, 0x228 + i);
-    }
+  ports = collect_ports(cfg);
+  for (i = 0; ports[i]; i++) {
+    qpi_clear_port_trap(&qpi, ports[i]);
   }
 
   callback = qpi_get_io_callback(&qpi);
@@ -306,8 +302,8 @@ static void check_jemm(char bios_id) {
   cputs("Detected JEMM memory manager. Use this command instead:\r\n"
         "    JLOAD JADLIPT.DLL LPT");
   putch('1' + bios_id);
-  if (config.opl3) {
-    cputs(" OPL3");
+  if (!config.opl3) {
+    cputs(" OPL2");
   }
   cputs("\r\n");
   exit(1);
@@ -316,6 +312,8 @@ static void check_jemm(char bios_id) {
 
 static bool uninstall(struct config __far *cfg) {
   struct iisp_header __far *current_amis_handler;
+
+  hw_reset(cfg->lpt_port);
 
   if (cfg->emm_type == EMM_EMM386 && !shutdown_emm386(cfg)) {
     return false;
@@ -344,7 +342,7 @@ static short get_lpt_port(int i) {
 
 
 static void usage(void) {
-  cputs("Usage: ADLIPT [LPT1|LPT2|LPT3] [OPL3]\r\n"
+  cputs("Usage: ADLIPT [LPT1|LPT2|LPT3] [OPL2] [BLASTER[=220]]\r\n"
         "       ADLIPT STATUS\r\n"
         "       ADLIPT UNLOAD\r\n");
 }
@@ -358,7 +356,7 @@ static void status(struct config __far *cfg) {
   }
   cputs("loaded\r\n");
 
-  cputs("  Mode: ");
+  cputs("  Hardware: ");
   cputs(cfg->opl3 ? "OPL3LPT" : "OPL2LPT");
   cputs("\r\n");
 
@@ -370,6 +368,16 @@ static void status(struct config __far *cfg) {
   cputs(cfg->cpu_type == 3 ? "386" :
         cfg->cpu_type == 4 ? "486" :
         "Pentium or later");
+  cputs("\r\n");
+
+  cputs("  Sound Blaster FM: ");
+  if (!cfg->sb_base) {
+    cputs("no");
+  } else {
+    cputs("port 2");
+    putch('0' + ((cfg->sb_base & 0x00F0) >> 4));
+    cputs("0");
+  }
   cputs("\r\n");
 
   cputs("  Patching: ");
@@ -390,7 +398,7 @@ int main(void) {
   /* Defaults */
   config.bios_id = 0;
   config.opl3 = 1;
-  config.sb_base = 0x220;
+  config.sb_base = 0;
   config.enable_patching = true;
   config.psp = _psp;
   config.cpu_type = cpu_type();
@@ -438,6 +446,9 @@ int main(void) {
 
   if (mode == MODE_STATUS) {
     status(resident);
+    if (resident) {
+      hw_reset(resident->lpt_port);
+    }
     return 0;
   }
 
@@ -473,6 +484,7 @@ int main(void) {
   }
 
   status(&config);
+  hw_reset(config.lpt_port);
 
   /* hook AMIS interrupt */
   amis_handler.next_handler = _dos_getvect(0x2D);

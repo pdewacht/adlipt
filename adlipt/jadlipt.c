@@ -64,7 +64,6 @@ __declspec(naked) static void port_trap() {
 static void puts(const char *str) {
   struct cb_s *hVM = Get_Cur_VM_Handle();
   struct Client_Reg_Struc *pcl = hVM->CB_Client_Pointer;
-
   Begin_Nest_Exec(pcl);
   for (; *str; str++) {
     pcl->Client_EAX = 0x0200;
@@ -74,29 +73,33 @@ static void puts(const char *str) {
   End_Nest_Exec(pcl);
 }
 
+
 static short get_lpt_port(int i) {
   return *(short *)(0x406 + 2*i);
 }
+
 
 static const char banner[] =
   "ADLiPT " XSTR(VERSION_MAJOR) "." XSTR(VERSION_MINOR)
   "  github.com/pdewacht/adlipt\r\n";
 
 static const char usage[] =
-  "Usage: JLOAD JADLIPT.DLL [LPT1|LPT2|LPT3] [OPL3]\r\n";
+  "Usage: JLOAD JADLIPT.DLL [LPT1|LPT2|LPT3] [OPL2] [BLASTER[=220]]\r\n";
 
 static const char not_present[] =
   "Port not present\r\n";
 
+
 static int install(char *cmd_line) {
   enum mode mode;
+  int i, *ports;
 
   puts(banner);
 
   /* Defaults */
   config.bios_id = 0;
-  config.opl3 = 0;
-  config.sb_base = 0x220;
+  config.opl3 = 1;
+  config.sb_base = 0;
   config.enable_patching = 1;
   config.cpu_type = cpu_type();
 
@@ -113,38 +116,28 @@ static int install(char *cmd_line) {
     return 0;
   }
 
-  if (Install_IO_Handler(0x388, port_trap) != 0) {
-    goto fail1;
-  }
-  if (Install_IO_Handler(0x389, port_trap) != 0) {
-    goto fail2;
-  }
-  if (config.opl3) {
-    if (Install_IO_Handler(0x38A, port_trap) != 0) {
-      goto fail3;
-    }
-    if (Install_IO_Handler(0x38B, port_trap) != 0) {
-      goto fail4;
+  /* hw_reset(config.lpt_port); */
+
+  ports = collect_ports(&config);
+  for (i = 0; ports[i]; i++) {
+    if (Install_IO_Handler(ports[i], port_trap) != 0) {
+      goto fail;
     }
   }
   return 1;
 
- fail4:
-  Remove_IO_Handler(0x38A);
- fail3:
-  Remove_IO_Handler(0x389);
- fail2:
-  Remove_IO_Handler(0x388);
- fail1:
+ fail:
+  for (i--; i >= 0; i--) {
+    Remove_IO_Handler(ports[i]);
+  }
   return 0;
 }
 
 static int uninstall() {
-  Remove_IO_Handler(0x388);
-  Remove_IO_Handler(0x389);
-  if (config.opl3) {
-    Remove_IO_Handler(0x38A);
-    Remove_IO_Handler(0x38B);
+  int i, *ports;
+  ports = collect_ports(&config);
+  for (i = 0; ports[i]; i++) {
+    Remove_IO_Handler(ports[i]);
   }
   return 1;
 }

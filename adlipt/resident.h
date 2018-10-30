@@ -1,3 +1,5 @@
+#ifdef _M_I86
+
 union version {
   unsigned short word;
   struct {
@@ -20,6 +22,8 @@ enum emm_type {
   EMM_EMM386,
   EMM_QEMM
 };
+
+#endif
 
 _Packed struct config {
   unsigned lpt_port;
@@ -44,7 +48,7 @@ extern struct iisp_header RESIDENT amis_handler;
 extern char RESIDENT amis_header[];
 extern char RESIDENT amis_id;
 
-extern char RESIDENT emm386_table[];
+extern int RESIDENT emm386_table[];
 extern struct iisp_header RESIDENT qemm_handler;
 
 extern char _WCI86FAR * RESIDENT port_trap_ip;
@@ -73,3 +77,6 @@ porthandler *get_port_handler(unsigned port, unsigned flags);
 #else
 #pragma aux get_port_handler parm [edx ecx] value [ebx] modify exact [ebx]
 #endif
+
+
+extern void hw_reset(unsigned port);

@@ -123,9 +123,9 @@ static short address;
 static char timer_reg;
 
 
-#define DO_LPT(value, flags)                    \
+#define WRITE_LPT(value, flags)                 \
   do {                                          \
-    unsigned port = config.lpt_port;            \
+    unsigned port = lpt_port;                   \
     outp(port, (value));                        \
     port += 2;                                  \
     outp(port, (flags));                        \
@@ -134,31 +134,43 @@ static char timer_reg;
   } while (0)
 
 
-#pragma aux delay parm [bx] modify exact [bx dx]
+#ifdef _M_I86
+#pragma aux delay parm [dx] [bx] modify exact [ax bx]
+#pragma aux cond_delay parm [dx] [bx] modify exact [ax bx]
+#else
+#pragma aux delay parm [edx] [ebx] modify exact [eax ebx]
+#pragma aux cond_delay parm [edx] [ebx] modify exact [eax ebx]
+#endif
 
-void delay(char cnt) {
+static void delay(unsigned port, char cnt) {
+  do {
+    (volatile) inp(port);
+  } while (--cnt);
+}
+
+static void cond_delay(unsigned port, char cnt) {
   if (config.enable_patching) {
-    do {
-      (volatile) inp(config.lpt_port);
-    } while (--cnt);
+    delay(port, cnt);
   }
 }
 
 
 unsigned emulate_opl2_write_address(unsigned ax) {
+  unsigned lpt_port = config.lpt_port;
   address = ax & 0xFF;
-  DO_LPT(ax, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE);
-  delay(DELAY_OPL2_ADDRESS);
+  WRITE_LPT(ax, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE);
+  cond_delay(lpt_port, DELAY_OPL2_ADDRESS);
   return ax;
 }
 
 unsigned emulate_opl2_write_data(unsigned ax) {
   static const char delay_cnt[2] = { DELAY_OPL2_DATA, DELAY_OPL3 };
+  unsigned lpt_port = config.lpt_port;
   if (address == 4) {
     timer_reg = ax;
   }
-  DO_LPT(ax, PP_INIT | PP_NOT_SELECT);
-  delay(delay_cnt[config.opl3]);
+  WRITE_LPT(ax, PP_INIT | PP_NOT_SELECT);
+  cond_delay(lpt_port, delay_cnt[config.opl3]);
   return ax;
 }
 
@@ -170,12 +182,13 @@ unsigned emulate_opl3_write_low_address(unsigned ax) {
 }
 
 unsigned emulate_opl3_write_high_address(unsigned ax) {
+  unsigned lpt_port = config.lpt_port;
   if (!config.opl3) {
     return ax;
   }
   address = 0x100 | (ax & 0xFF);
-  DO_LPT(ax, PP_INIT | PP_NOT_STROBE);
-  delay(DELAY_OPL3);
+  WRITE_LPT(ax, PP_INIT | PP_NOT_STROBE);
+  cond_delay(lpt_port, DELAY_OPL3);
   return ax;
 }
 
@@ -246,4 +259,23 @@ unsigned emulate_opl3_read(unsigned ax) {
     return 0;
   }
   return emulate_opl2_read(ax);
+}
+
+
+#pragma code_seg("CODE")
+
+void hw_reset(unsigned lpt_port) {
+  int i;
+  for (i = 0; i < 256; i++) {
+    /* Clear register i */
+    WRITE_LPT(i, PP_INIT | PP_NOT_SELECT | PP_NOT_STROBE);
+    delay(lpt_port, DELAY_OPL2_ADDRESS);
+    WRITE_LPT(0, PP_INIT | PP_NOT_SELECT);
+    delay(lpt_port, DELAY_OPL2_DATA);
+    /* Clear register 0x100+i -- harmless on OPL2LPT */
+    WRITE_LPT(i, PP_INIT | PP_NOT_STROBE);
+    delay(lpt_port, DELAY_OPL2_ADDRESS);
+    WRITE_LPT(0, PP_INIT | PP_NOT_SELECT);
+    delay(lpt_port, DELAY_OPL2_DATA);
+  }
 }
