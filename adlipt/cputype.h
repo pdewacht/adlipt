@@ -70,6 +70,7 @@ char cpu_type(void);
 char cpu_type(void);
 #pragma aux cpu_type =                                                  \
   ".586"                                                                \
+  "pushfd"                                                              \
   "cli"                                                                 \
                                                                         \
   "pushfd"                  /* push original EFLAGS */                  \
@@ -107,7 +108,7 @@ char cpu_type(void);
   "and     eax, 0fh"                                                    \
                                                                         \
   "end_cpu_type:"                                                       \
-  "sti"                                                                 \
+  "popfd"                                                               \
   value [al] modify [eax ebx ecx edx]
 
 #endif

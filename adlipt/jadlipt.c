@@ -116,7 +116,7 @@ static int install(char *cmd_line) {
     return 0;
   }
 
-  /* hw_reset(config.lpt_port); */
+  hw_reset(config.lpt_port);
 
   ports = collect_ports(&config);
   for (i = 0; ports[i]; i++) {
