@@ -302,8 +302,8 @@ static void check_jemm(char bios_id) {
   cputs("Detected JEMM memory manager. Use this command instead:\r\n"
         "    JLOAD JADLIPT.DLL LPT");
   putch('1' + bios_id);
-  if (!config.opl3) {
-    cputs(" OPL2");
+  if (config.opl3) {
+    cputs(" OPL3");
   }
   cputs("\r\n");
   exit(1);
@@ -342,7 +342,7 @@ static short get_lpt_port(int i) {
 
 
 static void usage(void) {
-  cputs("Usage: ADLIPT [LPT1|LPT2|LPT3] [OPL2] [BLASTER[=220]]\r\n"
+  cputs("Usage: ADLIPT [LPT1|LPT2|LPT3] [OPL3] [BLASTER[=220]]\r\n"
         "       ADLIPT STATUS\r\n"
         "       ADLIPT UNLOAD\r\n");
 }
@@ -397,7 +397,7 @@ int main(void) {
 
   /* Defaults */
   config.bios_id = 0;
-  config.opl3 = 1;
+  config.opl3 = 0;
   config.sb_base = 0;
   config.enable_patching = true;
   config.psp = _psp;
