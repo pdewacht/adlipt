@@ -3,6 +3,8 @@
 This is a simple stand-alone OPL2LPT test program. Run it and it will
 play a little tune. The file opl2test.mp3 contains a reference recording.
 
+Also included is OPL3TEST, a variant that lets you test OPL3 stereo.
+
 ## Copyright
 
 The code is adapted from Maarten Janssen's ArduinoOPL2 project.

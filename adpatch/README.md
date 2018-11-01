@@ -36,7 +36,7 @@ much all formats.
 A list of tested games is maintained
 [here](https://github.com/pdewacht/adlipt/wiki/ADPATCH-Tested-Games).
 
-## Compilation
+## Source Code
 
 To compile a DOS executable using OpenWatcom, use the `build.sh`
 script. To compile with GCC, use the `buildunix.sh` script.
