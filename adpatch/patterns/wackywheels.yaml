@@ -1,30 +1,30 @@
 ---
 name: Wacky Wheels Adlib output
 find: |
-    mov bx,0x388
-    db 0x00, 0x00 ; padding
-    mov si,ax
-    mov al,cl
-    mov dx,bx
+    bits 32
+    mov ebx,0x388
+    mov esi,eax
+    db 0x88, 0xc8 ; mov al,cl
+    mov edx,ebx
     out dx,al
-    mov cx,0x6
-    db 0x00,0x00 ; padding
-    mov dx,0x388
-    db 0x00,0x00 ; padding
-    L1: dec cx
-    sub ax,ax
+    mov ecx,0x6
+    mov edx,0x388
+    L1: dec ecx
+    sub eax,eax
     in al,dx
-    test cx,cx
+    test ecx,ecx
     jg L1
-    db 0x8a,0x04,0x24 ; mov al,[si]
-    db 0x8d,0x53,0x01 ; lea edx,[ebx+1]
-    db 0xee ; out dx, al
-    mov dx,bx
+    mov al,[esp]
+    lea edx,[ebx+0x1]
+    out dx, al
+    mov edx,ebx
     BEGIN
-      sub ax,ax
+      sub eax,eax
       in al,dx
     REPEAT
 replace: |
-    mov si,ax
+    bits 32
+    mov esi,eax
     %define ARG1 cl
-    %include 'wackywheels.s'
+    %define ARG2 [esp]
+    %include 'standard32.s'
