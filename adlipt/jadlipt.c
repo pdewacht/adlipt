@@ -61,6 +61,15 @@ __declspec(naked) static void port_trap() {
 }
 
 
+void int0f() {
+  struct cb_s *hVM = Get_Cur_VM_Handle();
+  struct Client_Reg_Struc *pcl = hVM->CB_Client_Pointer;
+  Begin_Nest_Exec(pcl);
+  Exec_Int(pcl, 0x0F);
+  End_Nest_Exec(pcl);
+}
+
+
 static void puts(const char *str) {
   struct cb_s *hVM = Get_Cur_VM_Handle();
   struct Client_Reg_Struc *pcl = hVM->CB_Client_Pointer;
@@ -84,7 +93,7 @@ static const char banner[] =
   "  github.com/pdewacht/adlipt\r\n";
 
 static const char usage[] =
-  "Usage: JLOAD JADLIPT.DLL [LPT1|LPT2|LPT3] [OPL3] [BLASTER[=220]]\r\n";
+  "Usage: JLOAD JADLIPT.DLL [LPT1|LPT2|LPT3] [OPL3] [[FAKE]BLASTER[=220]]\r\n";
 
 static const char not_present[] =
   "Port not present\r\n";
@@ -100,6 +109,7 @@ static int install(char *cmd_line) {
   config.bios_id = 0;
   config.opl3 = 0;
   config.sb_base = 0;
+  config.sb_fake = 0;
   config.enable_patching = 1;
   config.cpu_type = cpu_type();
 

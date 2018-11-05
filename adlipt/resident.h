@@ -30,6 +30,7 @@ _Packed struct config {
   char bios_id;
   char opl3;
   unsigned sb_base;
+  char sb_fake;
   char cpu_type;
   char enable_patching;
 #ifdef _M_I86
@@ -70,6 +71,13 @@ extern porthandler emulate_opl3_write_high_address;
 extern porthandler emulate_opl3_write_data;
 extern porthandler emulate_opl2_read;
 extern porthandler emulate_opl3_read;
+extern porthandler emulate_ignore;
+extern porthandler emulate_sbdsp_reset;
+extern porthandler emulate_sbdsp_read_data;
+extern porthandler emulate_sbdsp_write_data;
+extern porthandler emulate_sbdsp_write_buffer;
+extern porthandler emulate_sbdsp_data_avail;
+extern porthandler emulate_sbmixer_data_write;
 
 porthandler *get_port_handler(unsigned port, unsigned flags);
 #ifdef _M_I86

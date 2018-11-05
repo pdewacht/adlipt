@@ -78,17 +78,17 @@ static porthandler * const sb_table[16][2] = {
   { emulate_opl3_read, emulate_opl3_write_data },
   { emulate_opl3_read, emulate_opl3_write_high_address },
   { emulate_opl3_read, emulate_opl3_write_data },
-  { NULL, NULL },
-  { NULL, NULL },
-  { NULL, NULL },
+  { emulate_ignore, emulate_ignore },
+  { emulate_sbdsp_read_data, emulate_sbmixer_data_write },
+  { emulate_ignore, emulate_sbdsp_reset },
   { NULL, NULL },
   { emulate_opl2_read, emulate_opl2_write_address },
   { emulate_opl2_read, emulate_opl2_write_data },
+  { emulate_sbdsp_read_data, emulate_ignore },
   { NULL, NULL },
+  { emulate_sbdsp_write_buffer, emulate_sbdsp_write_data },
   { NULL, NULL },
-  { NULL, NULL },
-  { NULL, NULL },
-  { NULL, NULL },
+  { emulate_sbdsp_data_avail, emulate_ignore },
   { NULL, NULL }
 };
 
@@ -278,4 +278,116 @@ void hw_reset(unsigned lpt_port) {
     WRITE_LPT(0, PP_INIT | PP_NOT_SELECT);
     delay(lpt_port, DELAY_OPL2_DATA);
   }
+}
+
+#pragma code_seg("RESIDENT")
+
+
+/* Sound Blaster... */
+
+enum sb_write_state {
+  SB_IDLE,
+  SB_IDENT,
+};
+
+static enum sb_write_state sb_write_state = SB_IDLE;
+static char sb_read_buf[2] = { 0xAA, 0xAA };
+
+unsigned emulate_ignore(unsigned ax) {
+#ifdef DEBUG
+  writechar('I');writechar('G');writechar('N');writeln();
+#endif
+  return ax;
+}
+
+unsigned emulate_sbdsp_reset(unsigned ax) {
+#ifdef DEBUG
+  writechar('R');writechar('S');writechar('T');writeln();
+#endif
+  sb_write_state = SB_IDLE;
+  sb_read_buf[0] = sb_read_buf[1] = 0xAA;
+  return ax;
+}
+
+unsigned emulate_sbdsp_read_data(unsigned ax) {
+  /* Output first byte, then repeat second byte */
+  char result = sb_read_buf[0];
+#ifdef DEBUG
+  writechar('R');writechar('D');writechar(' ');write2hex(result);writeln();
+#endif
+  sb_read_buf[0] = sb_read_buf[1];
+  return (ax & ~0xFF) | result;
+}
+
+void int0f();
+#ifdef _M_I86
+#pragma aux int0f = "int 0x0f" modify exact []
+#endif
+
+unsigned emulate_sbdsp_write_data(unsigned ax) {
+#ifdef DEBUG
+  writechar('W');writechar('R');writechar(' ');write2hex(ax);writeln();
+#endif
+  switch (sb_write_state) {
+  case SB_IDENT: {
+    char reply = ~ax;
+    sb_read_buf[0] = sb_read_buf[1] = reply;
+    sb_write_state = SB_IDLE;
+    break;
+  }
+  default:
+    switch ((char)ax) {
+    case 0xE0:  /* DSP Identification */
+      /* Other commands where we just want to skip a byte: */
+    case 0x10:  /* Direct DAC 8-bit */
+    case 0x38:  /* MIDI Write Poll */
+    case 0x40:  /* Set Time Constant */
+      sb_write_state = SB_IDENT;
+      break;
+    case 0xE1:  /* DSP Version */
+      if (config.opl3) {
+        sb_read_buf[0] = 3;
+        sb_read_buf[1] = 2;
+      } else {
+        sb_read_buf[0] = 1;
+        sb_read_buf[1] = 5;
+      }
+      break;
+    case 0xF2:
+      // This is crazy...
+      int0f();
+      break;
+    default:
+      /* 0x04 DSP Status */
+      /* 0xF1 DSP Auxiliary Status */
+      sb_read_buf[0] = sb_read_buf[1] = 0;
+      break;
+    }
+  }
+  return ax;
+}
+
+unsigned emulate_sbdsp_write_buffer(unsigned ax) {
+#ifdef DEBUG
+  writechar('W');writechar('R');writechar('?');writechar(' ');
+#endif
+  return ax & ~0xFF;
+}
+
+unsigned emulate_sbdsp_data_avail(unsigned ax) {
+#ifdef DEBUG
+  writechar('R');writechar('D');writechar('?');writechar(' ');
+#endif
+  return ax | 0xFF;
+}
+
+unsigned emulate_sbmixer_data_write(unsigned ax) {
+#ifdef DEBUG
+  writechar('M');writechar('I');writechar('X');write2hex(ax);writeln();
+#endif
+  // Just reuse the DSP read buffer here, we don't care
+  // Miles just wants to write & read back
+  sb_read_buf[0] = ax;
+  sb_read_buf[1] = ax;
+  return ax;
 }

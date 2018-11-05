@@ -98,6 +98,12 @@ _emm386_table:
         dw 0, emm386_handler
         dw 0, emm386_handler
         dw 0, emm386_handler
+        dw 0, emm386_handler
+        dw 0, emm386_handler
+        dw 0, emm386_handler
+        dw 0, emm386_handler
+        dw 0, emm386_handler
+        dw 0, emm386_handler
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

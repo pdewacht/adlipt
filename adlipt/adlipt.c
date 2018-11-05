@@ -342,7 +342,7 @@ static short get_lpt_port(int i) {
 
 
 static void usage(void) {
-  cputs("Usage: ADLIPT [LPT1|LPT2|LPT3] [OPL3] [BLASTER[=220]]\r\n"
+  cputs("Usage: ADLIPT [LPT1|LPT2|LPT3] [OPL3] [[FAKE]BLASTER[=220]]\r\n"
         "       ADLIPT STATUS\r\n"
         "       ADLIPT UNLOAD\r\n");
 }
@@ -370,15 +370,16 @@ static void status(struct config __far *cfg) {
         "Pentium or later");
   cputs("\r\n");
 
-  cputs("  Sound Blaster FM: ");
-  if (!cfg->sb_base) {
-    cputs("no");
-  } else {
-    cputs("port 2");
+  if (cfg->sb_base) {
+    cputs("  Sound Blaster: FM");
+    if (cfg->sb_fake) {
+      cputs(" & fake DSP");
+    }
+    cputs(", port 2");
     putch('0' + ((cfg->sb_base & 0x00F0) >> 4));
-    cputs("0");
+    putch('0');
+    cputs("\r\n");
   }
-  cputs("\r\n");
 
   cputs("  Patching: ");
   cputs(cfg->enable_patching ? "enabled" : "disabled");
@@ -399,6 +400,7 @@ int main(void) {
   config.bios_id = 0;
   config.opl3 = 0;
   config.sb_base = 0;
+  config.sb_fake = 0;
   config.enable_patching = true;
   config.psp = _psp;
   config.cpu_type = cpu_type();
