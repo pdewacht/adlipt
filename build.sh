@@ -16,7 +16,7 @@ cp opl2test/opl3test.exe "$DIR/"
 cp opl2test/opl2test.mp3 "$DIR/"
 cp opl2test/README.md "$DIR/opl2test.txt"
 
-rm -f opl2util.zip
-zip -9j opl2util.zip "$DIR"/*
+rm -f oplutil.zip
+zip -9j oplutil.zip "$DIR"/*
 
 rm -rf "$DIR"
