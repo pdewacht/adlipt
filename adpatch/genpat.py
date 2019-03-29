@@ -87,7 +87,7 @@ for f in sorted(glob.glob('patterns/*.yaml')):
             continue
 
         if 'ragel' in doc:
-            pattern = doc['ragel']
+            pattern = doc['ragel'].strip()
         elif 'find' in doc:
             pattern = compile_pattern(doc['find'])
         else:
@@ -113,7 +113,7 @@ for f in sorted(glob.glob('patterns/*.yaml')):
             printf('%s: %s: missing action' % (f, name), file=sys.stderr)
             continue
 
-        print("%s => { %s };\n" % (pattern, action))
+        print("(\n%s\n) => {\n%s\n};\n" % (pattern, action))
 
 print("""any;
 *|;

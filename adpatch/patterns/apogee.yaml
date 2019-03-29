@@ -1,0 +1,37 @@
+---
+name: Apogee Adlib output
+ragel: |
+  0x8b.any.0x06.  # mov r16, word ptr [bp+6]
+  pushf.
+  cli.
+  0x8b.any.       # mov dx, r16
+  mov_al_byte_bp_i8.0x08.
+  out_dx_al.
+  any.0x6.0x00.   # mov r16, 0x06
+  jmp_i8.any.
+  0x8b.any.       # mov dx, r16
+  in_al_dx.
+  any.            # dec r16
+  0x0b.any.       # or r16, r16
+  jg_i8.0xf8.
+  0x8b.any.       # mov dx, r16
+  inc_dx.
+  mov_al_byte_bp_i8.0x0a.
+  out_dx_al.
+  popf.
+  any.0x23.0x00.   # mov r16, 0x23
+  jmp_i8.any.
+  0x8b.any.       # mov dx, r16
+  in_al_dx.
+  any.            # dec r16
+  0x0b.any.       # or r16, r16
+  jg_i8.0xf8
+replace: |
+  push cx
+  pushf
+  cli
+  %define ARG1 [bp+8]
+  %define ARG2 [bp+10]
+  %include 'standard.s'
+  popf
+  pop cx
