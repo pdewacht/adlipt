@@ -1,5 +1,6 @@
 adpatch
 adpatch.exe
 patterns.rl
-patch.c
+patch.inc
+scan.c
 *.o

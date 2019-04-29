@@ -8,7 +8,11 @@ find: |
     push ebp
     db 0x89, 0xe5 ; mov ebp,esp
     sub esp,byte +0x4
-    mov eax, ANYWORD
+    BEGIN
+      mov eax, ANYWORD
+    ALT
+      mov eax, ANYDWORD
+    END
     db 0xe8, ANYBYTE, ANYBYTE, ANYBYTE, ANYBYTE ; call 0x102e74
     test eax,eax
     jnz near L3

@@ -1,7 +1,39 @@
 ---
-name: Miles Audio Interface Library 2.0
+name: Miles Audio Interface Library 2.0 (Adlib check)
 ragel: |
-  # Adlib output routine
+  push_ds.
+  push_si.
+  push_di.
+  ^(ret|retf)*.
+  and_si_i16.0xE0.0x00.
+  and_di_i16.0xE0.0x00.
+  mov_ax_i16.0x00.0x00.
+  cmp_di_byte_i8.0x00.
+  jnz_i8.0x09.
+  cmp_si_i16.0xC0.0x00.
+  jnz_i8.0x03.
+  mov_ax_i16.0x01.0x00.
+  pop_di.
+  pop_si.
+  pop_ds.
+  retf
+replace: |
+  global miles_far_output
+
+  mov ax, 1
+  retf
+
+  miles20_output:
+  push cx
+  mov ah, cl
+  %define ARG1 al
+  %define ARG2 ah
+  %include 'standard.s'
+  pop cx
+  retf
+---
+name: Miles Audio Interface Library 2.0 (Adlib output)
+ragel: |
   out_dx_al.
   mov_ah_i8.any.
   in_al_dx.
@@ -15,16 +47,17 @@ ragel: |
   in_al_dx.
   dec_ah.
   jnz_i8.0xFB.
-  retf.
-  # Some other routines
-  ^retf*.retf.
-  ^retf*.retf.
-  ^retf*.retf.
-  # Adlib detection routine
-  push_ds @{aux_ptr=fpc;}.
+  retf
+replace: |
+  extern miles_far_output
+  jmp miles_far_output
+---
+name: Miles Audio Interface Library 3.0 (Adlib check)
+ragel: |
+  push_ds.
   push_si.
   push_di.
-  ^retf*.
+  ^(ret|retf)*.
   and_si_i16.0xE0.0x00.
   and_di_i16.0xE0.0x00.
   mov_ax_i16.0x00.0x00.
@@ -36,37 +69,80 @@ ragel: |
   pop_di.
   pop_si.
   pop_ds.
-  retf
-hack: |
-  patch_jump_16(ts, aux_ptr + 4);
-  ts = aux_ptr;
+  ret
 replace: |
+  global miles_near_output
+
   mov ax, 1
-  retf
+  ret
+
+  miles_near_output:
   push cx
   mov ah, cl
   %define ARG1 al
   %define ARG2 ah
   %include 'standard.s'
   pop cx
-  retf
+  ret
 ---
-name: Miles Audio Interface Library/16 (Adlib output)
+name: Miles Audio Interface Library 3.0 or /32 (Adlib output)
+comment: |
+  This code sequence is identical in 16-bit real mode and 32-bit
+  protected mode versions...
 ragel: |
-  ((mov_dx_i16.any.any) | (cs?.mov_dx_word_any16)).
-  mov_al_bl.
   out_dx_al.
-  in_al_dx+.
+  mov_ah_i8.any.
+  in_al_dx.
+  dec_ah.
+  jnz_i8.0xFB.
   mov_al_cl.
-  (inc_dx | (mov_dx_i16.any.any) | (cs?.mov_dx_word_any16)).
+  inc_dx.
   out_dx_al.
-  (dec_dx | (mov_dx_i16.any.any) | (cs?.mov_dx_word_any16)).
-  in_al_dx+
+  dec_dx.
+  mov_ah_i8.any.
+  in_al_dx.
+  dec_ah.
+  jnz_i8.0xFB.
+  ret
 replace: |
+  bits 32
+  extern miles_near_output
+  jmp miles_near_output
+---
+name: Miles Audio Interface Library/32 (Adlib check)
+ragel: |
+  push_ebx.
+  push_esi.
+  push_edi.
+  ^ret*.
+  and_esi_i32.0xE0.0x00.0x00.0x00.
+  and_edi_i32.0xE0.0x00.0x00.0x00.
+  mov_eax_i32.0x00.0x00.0x00.0x00.
+  cmp_edi_byte_i8.0x00.
+  jnz_i8.0x0D.
+  cmp_esi_i32.0xC0.0x00.0x00.0x00.
+  jnz_i8.0x05.
+  mov_eax_i32.0x01.0x00.0x00.0x00.
+  pop_edi.
+  pop_esi.
+  pop_ebx.
+  ret.
+  zlen
+replace: |
+  bits 32
+  global miles_near_output
+
+  mov eax, 1
+  ret
+
+  miles_near_output:
+  push ecx
   mov ah, cl
-  %define ARG1 bl
+  %define ARG1 al
   %define ARG2 ah
-  %include 'standard.s'
+  %include 'standard32.s'
+  pop ecx
+  ret
 ---
 name: Miles Audio Interface Library/16 (Adlib check)
 ragel: |
@@ -96,56 +172,20 @@ ragel: |
 replace: |
   mov ax, 1
 ---
-name: Miles Audio Interface Library/32
+name: Miles Audio Interface Library/16 (Adlib output)
 ragel: |
-  # Adlib output routine
+  ((mov_dx_i16.any.any) | (cs?.mov_dx_word_any16)).
+  mov_al_bl.
   out_dx_al.
-  mov_ah_i8.any.
-  in_al_dx.
-  dec_ah.
-  jnz_i8.0xFB.
+  in_al_dx+.
   mov_al_cl.
-  inc_edx.
+  (inc_dx | (mov_dx_i16.any.any) | (cs?.mov_dx_word_any16)).
   out_dx_al.
-  dec_edx.
-  mov_ah_i8.any.
-  in_al_dx.
-  dec_ah.
-  jnz_i8.0xFB.
-  ret.
-  # Some other routines
-  ^ret*.ret.
-  ^ret*.ret.
-  ^ret*.ret.
-  # Adlib detection routine
-  push_ebx @{aux_ptr=fpc;}.
-  push_esi.
-  push_edi.
-  ^ret*.
-  and_esi_i32.0xE0.0x00.0x00.0x00.
-  and_edi_i32.0xE0.0x00.0x00.0x00.
-  mov_eax_i32.0x00.0x00.0x00.0x00.
-  cmp_edi_byte_i8.0x00.
-  jnz_i8.0x0D.
-  cmp_esi_i32.0xC0.0x00.0x00.0x00.
-  jnz_i8.0x05.
-  mov_eax_i32.0x01.0x00.0x00.0x00.
-  pop_edi.
-  pop_esi.
-  pop_ebx.
-  ret
-hack: |
-  patch_jump_32(ts, aux_ptr + 4);
-  ts = aux_ptr;
+  (dec_dx | (mov_dx_i16.any.any) | (cs?.mov_dx_word_any16)).
+  in_al_dx+
 replace: |
-  bits 32
-  xor eax, eax
-  inc eax
-  ret
-  push ecx
   mov ah, cl
-  %define ARG1 al
+  %define ARG1 bl
   %define ARG2 ah
-  %include 'standard32.s'
-  pop ecx
-  ret
+  %include 'standard.s'
+

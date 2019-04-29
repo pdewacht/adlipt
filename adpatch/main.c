@@ -7,7 +7,7 @@
 #ifdef __WATCOMC__
   #include <io.h>
 #endif
-#include "patch.h"
+#include "adpatch.h"
 
 
 #define STR(x) #x
@@ -19,6 +19,9 @@
 #else
   #define DEFAULT_PORT "0x378"
 #endif
+
+
+static int patch_port;
 
 
 static void in_place_mode(const char *orig_filename) {
@@ -53,34 +56,27 @@ static void in_place_mode(const char *orig_filename) {
   }
 
   if (rename(orig_filename, bak_filename) != 0) {
-    fprintf(stderr, "Error: Rename failed: %s\n", strerror(errno));
+    perror("Error: Rename failed");
     exit(1);
   }
 
   in = fopen(bak_filename, "rb");
   if (!in) {
-    fprintf(stderr, "Error: Can't open input file for reading: %s\n", strerror(errno));
+    perror("Error: Can't open input file for reading");
     goto rollback;
   }
   setvbuf(in, 0, _IONBF, 0);
 
   out = fopen(orig_filename, "wb");
   if (!out) {
-    fprintf(stderr, "Error: Can't open output file for writing: %s\n", strerror(errno));
+    perror("Error: Can't open output file for writing");
     goto rollback;
   }
   setvbuf(out, 0, _IONBF, 0);
 
-  if (!apply_patches(in, out, &i)) {
+  i = apply_patches(in, out, patch_port);
+  if (i <= 0) {
     goto rollback;
-  }
-  if (i == 0) {
-    fprintf(stderr, "Sorry, no matches found.\n");
-    goto rollback;
-  } else if (i == 1) {
-    fprintf(stderr, "1 patch applied.\n");
-  } else {
-    fprintf(stderr, "%d patches applied.\n", i);
   }
 
   fclose(out);
@@ -88,7 +84,6 @@ static void in_place_mode(const char *orig_filename) {
   return;
 
  rollback:
-  fprintf(stderr, "Patch failed.\n");
   if (out) {
     fclose(out);
   }
@@ -102,39 +97,41 @@ static void in_place_mode(const char *orig_filename) {
 
 static void copy_mode(const char *src_filename, const char *dst_filename) {
   FILE *in, *out;
+  int r;
 
   in = fopen(src_filename, "rb");
   if (!in) {
-    fprintf(stderr, "Error: Can't open input file for reading: %s\n", strerror(errno));
+    perror("Error: Can't open input file for reading");
     exit(1);
   }
   setvbuf(in, 0, _IONBF, 0);
 
   out = fopen(dst_filename, "wb");
   if (!out) {
-    fprintf(stderr, "Error: Can't open output file for writing: %s\n", strerror(errno));
+    perror("Error: Can't open output file for writing");
     exit(1);
   }
   setvbuf(out, 0, _IONBF, 0);
 
-  if (!apply_patches(in, out, 0)) {
-    exit(1);
-  }
+  r = apply_patches(in, out, patch_port);
 
   fclose(out);
   fclose(in);
+
+  if (r < 0) {
+    unlink(dst_filename);
+    exit(1);
+  }
 }
 
 static void usage() {
   fprintf(stderr,
           "ADPATCH " XSTR(VERSION) "\n"
           "\n"
-          "Usage: adpatch [OPTIONS...] -i FILE\n"
-          "       adpatch [OPTIONS...] INPUT-FILE OUTPUT-FILE\n"
+          "Usage: adpatch [OPTIONS...] FILE\n"
+          "       adpatch [OPTIONS...] -o OUTPUT-FILE INPUT-FILE\n"
           "\n"
           "Options:\n"
-          "  -i            Patch in-place\n"
-          "  -a            Ask before applying a patch\n"
           "  -p PORT       Set OPL2LPT port (default: " DEFAULT_PORT ")\n"
           );
   exit(1);
@@ -163,19 +160,20 @@ static short parse_port(const char *arg) {
 }
 
 int main(int argc, char *argv[]) {
-  bool inplace = false;
+  char *src = NULL;
+  char *dest = NULL;
   int opt;
 
-  while ((opt = getopt(argc, argv, "ip:a")) != -1) {
+  while ((opt = getopt(argc, argv, "ip:o:")) != -1) {
     switch (opt) {
     case 'i':
-      inplace = true;
+      /* Ignored for backward compatibility*/
       break;
     case 'p':
       patch_port = parse_port(optarg);
       break;
-    case 'a':
-      patch_ask = true;
+    case 'o':
+      dest = optarg;
       break;
     default:
       usage();
@@ -186,16 +184,15 @@ int main(int argc, char *argv[]) {
     patch_port = parse_port(DEFAULT_PORT);
   }
 
-  if (inplace) {
-    if (optind + 1 != argc) {
-      usage();
-    }
-    in_place_mode(argv[optind]);
+  if (optind + 1 != argc) {
+    usage();
+  }
+  src = argv[optind];
+
+  if (!dest) {
+    in_place_mode(src);
   } else {
-    if (optind + 2 != argc) {
-      usage();
-    }
-    copy_mode(argv[optind], argv[optind + 1]);
+    copy_mode(src, dest);
   }
   return 0;
 }

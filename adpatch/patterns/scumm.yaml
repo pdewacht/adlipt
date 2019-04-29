@@ -1,145 +1,200 @@
 ---
-name: SCUMM Adlib detection
-find: |
-    push ds
-    mov dx,0x388
-    mov al,0x1
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x389
-    mov al,0x0
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x388
-    mov al,0x4
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x389
-    mov al,0x60
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x388
-    mov al,0x4
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x389
-    mov al,0x80
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x388
-    in al,dx
-    db 0xA2, ANYBYTE, ANYBYTE ; mov [ANYBYTE],al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x388
-    mov al,0x2
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x389
-    mov al,0xff
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x388
-    mov al,0x4
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x389
-    mov al,0x21
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x388
-    in al,dx
-    db 0xA2, ANYBYTE, ANYBYTE ; mov [ANYBYTE],al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x388
-    mov al,0x4
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x389
-    mov al,0x60
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x388
-    mov al,0x4
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    mov dx,0x389
-    mov al,0x80
-    out dx,al
-    db 0xE8, ANYBYTE, ANYBYTE ; call 0x3696
-    and byte [ANYWORD],0xe0
-    and byte [ANYWORD],0xe0
-    cmp byte [ANYWORD],0x0
-    jnz L1
-    cmp byte [ANYWORD],0xc0
-    jnz L1
-    mov al,0x1
-    jmp short L2
-    nop
-    L1: db 0x32, 0xc0 ; xor al,al
-    L2: db 0x32, 0xe4 ; xor ah,ah
-    pop ds
+name: LucasArts Adlib detection
+ragel: |
+  (
+    mov_dx_i16.any.any.
+    ( mov_al_i8.any. out_dx_al
+    | in_al_dx. 0xa2.any.any
+    )
+    call_any16*
+  )+.
+  0x80.0x26.any.any.0xe0.
+  0x80.0x26.any.any.0xe0.
+  0x80.0x3e.any.any.0x00.
+  jnz_i8.0x0c.
+  0x80.0x3e.any.any.0xc0.
+  jnz_i8.0x05.
+  mov_al_i8.0x01.
+  jmp_i8.0x03.
+  nop.
+  xor_al_al.
+  xor_ah_ah
 replace: |
-    mov al, 0x1
+  mov ax, 0x1
+  jmp end
+
+  global lucasarts_adlib
+  lucasarts_adlib:
+  push ax
+  push cx
+  push dx
+  xchg ah, al
+  %define ARG1 al
+  %define ARG2 ah
+  %include 'standard.s'
+  pop dx
+  pop cx
+  pop ax
+  ret
+
+  end:
 ---
-name: SCUMM Adlib output (routine 1) (ADLIB.IMS)
-find: |
-    push bx
-    push cx
-    push dx
-    db 0x32, 0xFF ; xor bh,bh
-    db 0x8a, 0xdc ; mov bl,ah
-    db 0x3a, ANYBYTE, ANYBYTE, ANYBYTE ; cmp al,[ANYWORD]
-    jz L1
-    db 0x88, ANYBYTE, ANYBYTE, ANYBYTE ; mov [ANYWORD],al
-    db 0x86, 0xe0 ; xchg ah,al
-    mov dx,0x388 ; select control register
-    out dx,al ; output to control register
-    mov cx,[ANYWORD] ; 3.3ms delay
-    db 0xE2, 0xFE ; L2 loop L2
-    db 0x86, 0xe0 ; xchg ah,al
-    inc dx
-    out dx,al
-    mov cx,[ANYWORD] ; 33ms delay
-    db 0xE2, 0xFE ; L3 loop L3
-    L1: pop dx
-    pop cx
-    pop bx
+name: LucasArts Adlib output (.EXE)
+ragel: |
+  xchg_ah_al.
+  (mov_dx_i16.0x88.0x03)?.
+  out_dx_al.
+  mov_cx_word_any16.
+  (nop | push_ax | pop_ax)+.
+  ( dec_cx. or_cx_cx. jnz_i8.any
+  | loop_i8.any
+  ).
+  ( xchg_ah_al. inc_dx
+  | inc_dx. mov_al_ah
+  ).
+  out_dx_al.
+  mov_cx_word_any16.
+  (nop | push_ax | pop_ax)+.
+  ( dec_cx. or_cx_cx. jnz_i8.any
+  | loop_i8.any
+  )
 replace: |
-    pusha
-    xchg ah,al
-    %define ARG1 al
-    %define ARG2 ah
-    %include 'compact.s'
-    popa
+  extern lucasarts_adlib
+  call lucasarts_adlib
 ---
-name: SCUMM Adlib output (routine 2) (ADLIB.IMS)
-find: |
-    push bx
-    push cx
-    push dx
-    db 0x32, 0xFF ; xor bh,bh
-    db 0x8a, 0xdc ; mov bl,ah
-    db 0x88, ANYBYTE, ANYBYTE, ANYBYTE ; mov [ANYWORD],al
-    db 0x86, 0xe0 ; xchg ah,al
-    mov dx,0x388 ; select control register
-    out dx,al ; output to control register
-    mov cx,[ANYWORD] ; 3.3ms delay
-    nop
-    db 0xE2, 0xFE ; L2 loop L2
-    db 0x86, 0xe0 ; xchg ah,al
-    inc dx
-    out dx,al
-    mov cx,[ANYWORD] ; 33ms delay
-    db 0xE2, 0xFE ; L3 loop L3
-    pop dx
-    pop cx
-    pop bx
+name: LucasArts Adlib output (FM2.MDR) (part 1)
+ragel: |
+  mov_dx_word_any16.
+  mov_al_byte_bp_i8.0x04.
+  out_dx_al.
+  mov_cx_word_any16.
+  loop_i8.0xFE.
+  inc_dx.
+  mov_al_byte_bp_i8.0x06.
+  out_dx_al.
+  mov_cx_word_any16.
+  nop.
+  loop_i8.0xFE
 replace: |
-    pusha
-    xchg ah,al
-    %define ARG1 al
-    %define ARG2 ah
-    %include 'compact.s'
-    popa
+  global fm2_mdr_part1
+  extern fm2_mdr_part2
+  global fm2_mdr_loop
+
+  fm2_mdr_part1:
+  stc
+  mov al, [bp+4]
+  fm2_mdr_loop:
+  mov dx, PORT
+  out dx, al
+  mov al, 13
+  mov cx, 6
+  jc L9
+  dec ax
+  mov cl, 15
+  L9:
+  inc dx
+  inc dx
+  jmp fm2_mdr_part2
+
+---
+name: LucasArts Adlib output (FM2.MDR) (part 2)
+ragel: |
+  mov_dx_word_any16.
+  mov_al_byte_bp_i8.0x04.
+  out_dx_al.
+  mov_cx_word_any16.
+  nop.
+  loop_i8.0xFE.
+  inc_dx.
+  mov_al_byte_bp_i8.0x06.
+  out_dx_al.
+  mov_cx_word_any16.
+  nop.
+  loop_i8.0xFE
+replace: |
+  extern fm2_mdr_part1
+  global fm2_mdr_part2
+  extern fm2_mdr_loop
+
+  jmp fm2_mdr_part1
+
+  fm2_mdr_part2:
+  out dx, al
+  sub al, 4
+  out dx, al
+  add al, 4
+  out dx, al
+  L2:
+  in al, dx
+  loop L2
+  mov al, [bp+6]
+  jpo fm2_mdr_loop
+---
+name: LucasArts Adlib output (ADLIB.IMS) (part 1)
+ragel: |
+  xchg_ah_al.
+  mov_dx_i16.0x88.0x03.
+  out_dx_al.
+  mov_cx_word_any16.
+  loop_i8.0xFE.
+  xchg_ah_al.
+  inc_dx.
+  out_dx_al.
+  mov_cx_word_any16.
+  loop_i8.0xFE
+replace: |
+  global adlib_ims_part1
+  extern adlib_ims_part2
+  global adlib_ims_loop
+
+  adlib_ims_part1:
+  push ax
+  xchg ah, al
+  # standard.s begins here
+  stc
+  adlib_ims_loop:
+  mov dx, PORT
+  out dx, al
+  mov al, 13
+  mov cx, 6
+  jc L9
+  dec ax
+  mov cl, 15
+  L9:
+  inc dx
+  jmp adlib_ims_part2
+---
+name: LucasArts Adlib output (ADLIB.IMS) (part 2)
+ragel: |
+  xchg_ah_al.
+  mov_dx_i16.0x88.0x03.
+  out_dx_al.
+  mov_cx_word_any16.
+  nop.
+  loop_i8.0xFE.
+  xchg_ah_al.
+  inc_dx.
+  out_dx_al.
+  mov_cx_word_any16.
+  loop_i8.0xFE
+replace: |
+  extern adlib_ims_part1
+  global adlib_ims_part2
+  extern adlib_ims_loop
+
+  jmp adlib_ims_part1
+
+  adlib_ims_part2:
+  inc dx
+  out dx, al
+  sub al, 4
+  out dx, al
+  add al, 4
+  out dx, al
+  L2:
+  in al, dx
+  loop L2
+  mov al, ah
+  jpo adlib_ims_loop
+  # standard.s ends here
+  pop ax

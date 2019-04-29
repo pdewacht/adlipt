@@ -1,21 +1,36 @@
 #!/usr/bin/python3
 import glob
+import logging
 import os
 import subprocess
 import tempfile
 import yaml
-import sys
+from contextlib import redirect_stdout
 
-def run_nasm(source, defines=None):
+import elf
+
+
+def c_string(s):
+    return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
+
+
+def c_bytes(s):
+    return '"' + ''.join('\\%03o' % ch for ch in s) + '"'
+
+
+def run_nasm(source, defines={}, fmt='bin'):
     with tempfile.TemporaryDirectory() as d:
         asm_name = os.path.join(d, 'code.asm')
-        bin_name = os.path.join(d, 'code.bin')
+        out_name = os.path.join(d, 'code.bin')
         with open(asm_name, 'wt') as asm_file:
             asm_file.write(source)
-        d_opts = ['-D%s=%s' % d for d in (defines or {}).items()]
-        subprocess.check_call(['nasm', '-Iasm/', *d_opts, '-o', bin_name, asm_name])
-        with open(bin_name, 'rb') as bin_file:
+        subprocess.check_call([
+            'nasm', '-Iasm/', '-f', fmt, '-o', out_name,
+            *('-D%s=%s' % d for d in defines.items()),
+            asm_name])
+        with open(out_name, 'rb') as bin_file:
             return bin_file.read()
+
 
 def compile_pattern(source):
     defines = {
@@ -54,68 +69,129 @@ def compile_pattern(source):
         'error'
         for a, b in zip(code1, code2))
 
-def compile_replacement(source, port=0x123):
-    defines = {'PORT': 0x0000}
-    anti_defines = {'PORT': 0xFFFF}
-    code1 = run_nasm(source, defines)
-    code2 = run_nasm(source, anti_defines)
-    port_idx = next((idx for idx, val
-                     in enumerate(zip(code1, code2))
-                     if val == (0x00, 0xFF)),
-                    -1)
-    return code1, port_idx
 
-def c_string(s):
-    return '"' + s.replace('\\', '\\\\').replace('"', '\\"') + '"'
+def compile_replacement(source):
+    source = 'extern PORT\nbits 16\n' + source
+    elf_object = run_nasm(source, fmt='elf')
+    return elf.parse(elf_object)
 
-def c_bytes(s):
-    return '"' + ''.join('\\%03o' % ch for ch in s) + '"'
 
-print("""
-%%{
-machine AdlibScanner;
-include x86 "x86.rl";
-main := |*
-""")
+def process_pattern(filename, pat):
+    if 'name' not in pat:
+        logging.error('%s: missing name', filename)
+        return
+    name = pat['name']
 
-for f in sorted(glob.glob('patterns/*.yaml')):
-    for doc in yaml.safe_load_all(open(f)):
-        if 'name' in doc:
-            name = doc['name']
-        else:
-            print('%s: missing name' % f, file=sys.stderr)
-            continue
+    if 'ragel' not in pat:
+        if 'find' not in pat:
+            logging.error('%s: %s: missing pattern',
+                          filename, name)
+            return
 
-        if 'ragel' in doc:
-            pattern = doc['ragel'].strip()
-        elif 'find' in doc:
-            pattern = compile_pattern(doc['find'])
-        else:
-            print('%s: %s: missing pattern' % (f, name), file=sys.stderr)
-            continue
+        try:
+            pat['ragel'] = compile_pattern(pat['find'])
+        except:
+            logging.error('%s: %s: failed to assemble pattern',
+                          filename, name, exc_info=True)
+            return
 
-        if 'warn' in doc:
-            if ('replace' in doc) or ('hack' in doc):
-                printf('%s: %s: incompatible actions' % (f, name), file=sys.stderr)
-                continue
-            action = 'printf("Warning: %%s\\n", %s);' % c_string(doc['warn'])
-        else:
-            action = 'if (ask(%s)) {\n' % c_string(name)
-            action += doc.get('hack', '')
-        if 'replace' in doc:
-            code, port_idx = compile_replacement(doc['replace'])
-            action += 'if (!patch(ts, te, %s, %s, %s)) { return false; }\n' % (
-                c_bytes(code),
-                len(code),
-                port_idx)
-            action += 'applied_patch();\n}'
-        if not action:
-            printf('%s: %s: missing action' % (f, name), file=sys.stderr)
-            continue
+        if 'error' in pat['ragel']:
+            logging.error('%s: %s: something wrong with pattern',
+                          filename, name)
+            return
 
-        print("(\n%s\n) => {\n%s\n};\n" % (pattern, action))
+    if 'replace' in pat:
+        try:
+            code, exports, relocations = compile_replacement(pat['replace'])
+        except:
+            logging.error('%s: %s: failed to assemble replacement',
+                          filename, name, exc_info=True)
+            return
 
-print("""any;
-*|;
-}%%
-""")
+        global patch_count
+        pat['patch'] = {
+            'idx': patch_count,
+            'code': code,
+            'exports': exports,
+            'relocations': relocations,
+        }
+        patch_count += 1
+
+    return True
+
+
+patch_count = 0
+patterns = [pattern
+            for f in sorted(glob.glob('patterns/*.yaml'))
+            for pattern in yaml.safe_load_all(open(f))
+            if process_pattern(f, pattern)]
+
+
+def collect_symbols(patterns):
+    symbols = {'PORT': 1}
+    for pat in patterns:
+        patch = pat.get('patch')
+        if patch:
+            for rel in patch['relocations']:
+                symbols.setdefault(rel.r_sym, len(symbols) + 1)
+            for s in patch['exports']:
+                symbols.setdefault(s, len(symbols) + 1)
+    return symbols
+
+
+symbols = collect_symbols(patterns)
+
+
+with redirect_stdout(open('patterns.rl', 'wt')):
+    print("""/* Generated by genpat.py */
+    %%{
+    machine AdlibScanner;
+    include x86 "x86.rl";
+    main := |*
+    """)
+    for pat in patterns:
+        print("(")
+        print(pat['ragel'].strip())
+        print(") => {")
+        if 'patch' in pat:
+            print("  MATCH(%s)" % pat['patch']['idx'])
+        if 'warn' in pat:
+            print("  WARN(%s)" % c_string(pat['warn']))
+        print("};")
+        print()
+    print("""
+    any;
+    *|;
+    }%%
+    """)
+
+with redirect_stdout(open('patch.inc', 'wt')):
+    print("/* Generated by genpat.py */")
+    print()
+    print("#define SYMBOL_COUNT", len(symbols))
+    print()
+    print("const struct patch patch_data[] = {")
+    for pat in patterns:
+        patch = pat.get('patch')
+        if patch:
+            print("{")
+            print("%s," % c_string(pat['name']))
+            print("%s," % c_bytes(patch['code']))
+            print("%s," % len(patch['code']))
+            print("{")
+            if patch['relocations']:
+                for rel in patch['relocations']:
+                    print("{ %s, %s, %s }," % (
+                        rel.r_offset, symbols[rel.r_sym], rel.r_type))
+            else:
+                print("{ 0 }")
+            print("},")
+            print("{")
+            if patch['exports']:
+                for sym, value in patch['exports'].items():
+                    print("{ %s, %s }," % (symbols[sym], value))
+            else:
+                print("{ 0 }")
+            print("}")
+            print("},")
+    print("};")
