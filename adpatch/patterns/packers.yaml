@@ -13,3 +13,8 @@ name: LZEXE signature
 ragel: |
   'LZ09'|'LZ91'
 warn: "This file might be compressed using LZEXE."
+---
+name: UPX signature
+ragel: |
+  'This file is packed with the UPX executable packer'
+warn: "This file might be compressed using UPX."

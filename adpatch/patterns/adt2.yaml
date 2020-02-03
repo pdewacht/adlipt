@@ -1,0 +1,100 @@
+---
+name: AdlibTracker II (part 4 of 4)
+ragel: |
+  push_i8.0x04.
+  push_i32.0x80.0x00.0x00.0x00.
+  push_i8.0x04.
+  push_i8.0x60.
+  call_any32*.
+  mov_dx_dword_any32.
+  in_al_dx.
+
+  and_al_i8.0xE0.
+  mov_bl_al.
+
+  push_i8.0x04.
+  push_i8.0x21.
+  push_i8.0x02.
+  push_i32.0xff.0x00.0x00.0x00.
+  call_any32*.
+  mov_dx_dword_any32.
+  in_al_dx.
+
+  and_al_i8.0xE0.
+  mov_bh_al.
+  o16.cmp_bx_i16.0x00.0xC0.
+  jnz_i8.0x33.
+
+  push_i8.0x04.
+  push_i32.0x80.0x00.0x00.0x00.
+  push_i8.0x04.
+  push_i8.0x60.
+  call_any32*.
+  mov_dx_dword_any32.
+  in_al_dx.
+
+  and_al_i8.0x06.
+  or_al_al.
+  jnz_i8.0x06
+
+replace: |
+  bits 32
+  global adt2_output
+  jmp skip
+
+  adt2_output:
+  %define ARG1 ax
+  %define ARG2 bl
+  %include 'opl3_32.s'
+  ret
+
+  skip:
+---
+name: AdlibTracker II (parts 1 and 2 of 4)
+ragel: |
+  mov_dx_dword_any32.
+  or_ah_ah.
+  jz_i8.0x05.
+  o16.add_dx_i16.0x02.0x00.
+  out_dx_al.
+  (
+    mov_ecx_i32.any.any.any.any.
+    in_al_dx.
+    loop_i8.0xFD
+  )?.
+  inc_dl.
+  o16.mov_ax_ebp_byte_i8.0x08.
+  out_dx_al.
+  dec_dl?.
+  mov_ecx_i32.any.any.any.any.
+  in_al_dx.
+  loop_i8.0xFD
+replace: |
+  bits 32
+  extern adt2_output
+  mov bx, [ebp+0x08]
+  call adt2_output
+---
+name: AdlibTracker II (part 3 of 4)
+ragel: |
+  mov_dx_dword_any32.
+  o16.add_dx_i16.0x02.0x00.
+  out_dx_al.
+  (
+    mov_ecx_i32.any.any.any.any.
+    in_al_dx.
+    loop_i8.0xFD
+  )?.
+  inc_dl.
+  mov_al_ah.
+  out_dx_al.
+  dec_dl?.
+  mov_ecx_i32.any.any.any.any.
+  in_al_dx.
+  loop_i8.0xFD
+replace: |
+  bits 32
+  extern adt2_output
+  mov bl, ah
+  mov ah, 1
+  call adt2_output

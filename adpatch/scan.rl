@@ -13,7 +13,7 @@
 }%%
 
 
-#define BUFSIZE (16*1024)
+#define BUFSIZE (32*1024)
 
 
 #define WARN(msg)                                               \
@@ -44,7 +44,7 @@ int scan_and_copy(FILE *in, FILE *out, struct match *matches) {
     if (space == 0) {
       /* We've used up the entire buffer storing an already-parsed token
        * prefix that must be preserved. */
-      fprintf(stderr, "Internal error: out of buffer space\n");
+      fprintf(stderr, "Internal error: out of buffer space [0x%X]\n", fpos-have);
       return -1;
     }
 

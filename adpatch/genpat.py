@@ -151,6 +151,7 @@ with redirect_stdout(open('patterns.rl', 'wt')):
     """)
     for pat in patterns:
         print("(")
+        print("#", pat['name'])
         print(pat['ragel'].strip())
         print(") => {")
         if 'patch' in pat:

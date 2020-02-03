@@ -1,124 +1,103 @@
 ---
-name: Duke Nukem 3D Adlib Detection
+name: Duke Nukem 3D / ROTT Adlib Detection
 find: |
     bits 32
-    push ebx
-    push ecx
-    push edx
-    push ebp
-    db 0x89, 0xe5 ; mov ebp,esp
-    sub esp,byte +0x4
-    BEGIN
-      mov eax, ANYWORD
-    ALT
-      mov eax, ANYDWORD
-    END
-    db 0xe8, ANYBYTE, ANYBYTE, ANYBYTE, ANYBYTE ; call 0x102e74
-    test eax,eax
-    jnz near L3
     mov ebx, 0x60
     mov edx, 0x4
-    mov eax,0x388
+    mov eax, 0x388
     db 0xe8, ANYBYTE, ANYBYTE, ANYBYTE, ANYBYTE ; call 0x102e74
-    mov ebx,0x80
-    mov edx,0x4
-    mov eax,0x388
+    mov ebx, 0x80
+    mov edx, 0x4
+    mov eax, 0x388
     db 0xe8, ANYBYTE, ANYBYTE, ANYBYTE, ANYBYTE ; call 0x102e74
-    mov edx,0x388
-    mov ebx,0xff
-    sub eax,eax
-    in al,dx
-    mov edx,0x2
-    mov [ebp-0x4],eax
-    mov eax,0x388
+    mov edx, 0x388
+    mov ebx, 0xff
+    sub eax, eax
+    in al, dx
+    mov edx, 0x2
+    BEGIN
+      mov [ebp-0x4], eax
+    ALT
+      mov [esp], eax
+    END
+    mov eax, 0x388
     db 0xe8, ANYBYTE, ANYBYTE, ANYBYTE, ANYBYTE ; call 0x102e74
-    mov ebx,0x21
-    mov edx,0x4
-    mov eax,0x388
-    mov ecx,0x388
+    mov ebx, 0x21
+    mov edx, 0x4
+    mov eax, 0x388
+    mov ecx, 0x388
     db 0xe8, ANYBYTE, ANYBYTE, ANYBYTE, ANYBYTE ; call 0x102e74
-    mov ebx,0x64
-    mov edx,ecx
+    mov ebx, 0x64
+    mov edx, ecx
     L2: dec ebx
-    sub eax,eax
-    in al,dx
-    test ebx,ebx
+    sub eax, eax
+    in al, dx
+    test ebx, ebx
     jg L2
-    mov edx,0x388
-    mov ebx,0x60
-    sub eax,eax
-    in al,dx
-    mov edx,0x4
-    mov ecx,eax
-    mov eax,0x388
+    mov edx, 0x388
+    mov ebx, 0x60
+    sub eax, eax
+    in al, dx
+    mov edx, 0x4
+    mov ecx, eax
+    mov eax, 0x388
     db 0xe8, ANYBYTE, ANYBYTE, ANYBYTE, ANYBYTE ; call 0x102e74
-    mov ebx,0x80
-    mov edx,0x4
-    mov eax,0x388
+    mov ebx, 0x80
+    mov edx, 0x4
+    mov eax, 0x388
     db 0xe8, ANYBYTE, ANYBYTE, ANYBYTE, ANYBYTE ; call 0x102e74
-    test byte [ebp-0x4], 0xe0
+    BEGIN
+      test byte [ebp-0x4], 0xe0
+    ALT
+      test byte [esp], 0xe0
+    END
     jnz L3
-    and ecx,0xe0
-    cmp ecx,0xc0
+    and ecx, 0xe0
+    cmp ecx, 0xc0
     jnz L3
-    mov eax,0x1
+    mov eax, 0x1
     jmp short L4
-    L3: xor eax,eax
-    L4: mov esp,ebp
-    pop ebp
-    pop edx
-    pop ecx
-    pop ebx
+    L3: xor eax, eax
+    L4:
 replace: |
     bits 32
-    mov eax, 1
-    ret
+    mov eax,  1
 ---
-name: Duke Nukem 3D Adlib output
+name: Duke Nukem 3D / ROTT Adlib output
 find: |
     bits 32
-    push ecx
-    push ebp
-    mov ebp,esp
-    sub esp,byte +0x4
-    mov ecx,eax
-    mov [ebp-0x4],ebx
-    mov al,dl
-    mov edx,ecx
-    mov ebx,0x6
-    out dx,al
-    mov edx,ecx
+    mov ecx, eax
+    BEGIN
+      mov [ebp-0x4], ebx
+    ALT
+      mov [esp], ebx
+    END
+    mov al, dl
+    mov edx, ecx
+    mov ebx, 0x6
+    out dx, al
+    mov edx, ecx
     L1: dec ebx
-    sub eax,eax
-    in al,dx
-    test ebx,ebx
+    sub eax, eax
+    in al, dx
+    test ebx, ebx
     jg L1
-    mov al,[ebp-0x4]
-    lea edx,[ecx+0x1]
-    mov ebx,0x1b
-    out dx,al
-    mov edx,ecx
+    BEGIN
+      mov al, [ebp-0x4]
+    ALT
+      mov al, [esp]
+    END
+    lea edx, [ecx+0x1]
+    mov ebx, 0x1b
+    out dx, al
+    mov edx, ecx
     L2: dec ebx
-    sub eax,eax
-    in al,dx
-    test ebx,ebx
+    sub eax, eax
+    in al, dx
+    test ebx, ebx
     jg L2
-    mov esp,ebp
-    pop ebp
-    pop ecx
 replace: |
     bits 32
-    push ecx
-    push ebp
-    mov ebp, esp
-    sub esp, 4
-    mov [ebp-0x4],ebx
-    mov al,dl
-    %define ARG1 al
-    %define ARG2 [ebp-0x4]
+    %define ARG1 dl
+    %define ARG2 bl
     %include 'standard32.s'
-    mov esp, ebp
-    pop ebp
-    pop ecx
-    sub eax,eax
-    ret
