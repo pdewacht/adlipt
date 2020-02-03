@@ -13,7 +13,7 @@
 }%%
 
 
-#define BUFSIZE (32*1024)
+#define BUFSIZE (31*1024)
 
 
 #define WARN(msg)                                               \
