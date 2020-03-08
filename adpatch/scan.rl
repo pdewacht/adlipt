@@ -44,7 +44,7 @@ int scan_and_copy(FILE *in, FILE *out, struct match *matches) {
     if (space == 0) {
       /* We've used up the entire buffer storing an already-parsed token
        * prefix that must be preserved. */
-      fprintf(stderr, "Internal error: out of buffer space [0x%X]\n", fpos-have);
+      fprintf(stderr, "Internal error: out of buffer space [0x%lX]\n", fpos-have);
       return -1;
     }
 

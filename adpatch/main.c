@@ -81,6 +81,7 @@ static void in_place_mode(const char *orig_filename) {
 
   fclose(out);
   fclose(in);
+  free(bak_filename);
   return;
 
  rollback:
@@ -92,6 +93,7 @@ static void in_place_mode(const char *orig_filename) {
   }
   remove(orig_filename);
   rename(bak_filename, orig_filename);
+  free(bak_filename);
   exit(1);
 }
 
