@@ -1,13 +1,17 @@
 ---
 name: Early id Software Adlib check
-find: |
-  test byte [bp-1], 0xE0
-  db 0x75, ANYBYTE
-  mov al, [bp-2]
-  mov ah, 0
-  and ax, 0xE0
-  cmp ax, 0xC0
-  db 0x75, ANYBYTE
+ragel: |
+  ( test_byte_bp_i8_i8.0xFF.0xE0
+  | test_di_i16.0xE0.0x00
+  ).
+  jnz_i8.any.
+  ( mov_al_byte_bp_i8.0xFE.
+    mov_ah_i8.0x00
+  | mov_ax_bp_byte_i8.0xFE
+  ).
+  and_ax_i16.0xE0.0x00.
+  cmp_ax_i16.0xC0.0x00.
+  jnz_i8.any
 replace: |
   nop
 ---
