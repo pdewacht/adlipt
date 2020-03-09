@@ -1,0 +1,111 @@
+---
+name: Taito Adlib output part 1/2
+ragel: |
+  push_ax.
+  push_bx?.
+  push_cx.
+  push_dx.
+  (mov_dx_i16.any.any | mov_dx_word_any16)?.
+  out_dx_al.
+  (jmp_i8.0x00)?.
+  call_any16.
+  mov_al_ah.
+  (inc_dl|inc_dx).
+  out_dx_al.
+  (jmp_i8.0x00)?.
+  (
+    mov_cx_i16.any.any.
+    call_any16.
+    loop_i8.0xFB
+  )?.
+  pop_dx.
+  pop_cx.
+  pop_bx?.
+  pop_ax.
+  ret
+replace: |
+  ; based on compact.s
+  global taito_part1
+  extern taito_part2
+
+      push ax
+      push cx
+      push dx
+      stc
+  taito_part1:
+      mov dx, PORT
+      out dx, al
+      mov al, 12
+      adc al, 0
+      inc dx
+      inc dx
+      out dx, al
+      sub al, 4
+      out dx, al
+      add al, 4
+      jmp taito_part2
+---
+name: Taito Adlib output part 2/2
+ragel: |
+  push_ax.
+  push_cx.
+  push_dx.
+  (and_dl_i8.0xFE | mov_dx_i16.any.any).
+  mov_cx_i16.any.any.
+  in_al_dx.
+  jmp_i8.0x00.
+  loop_i8.0xFB.
+  pop_dx.
+  pop_cx.
+  pop_ax.
+  ret
+replace: |
+  extern taito_part1
+  global taito_part2
+
+      ret
+  taito_part2:
+      out dx, al
+      mov cx, 35
+  L2: in al, dx
+      loop L2
+      mov al, ah
+      jpo taito_part1
+      pop dx
+      pop cx
+      pop ax
+      ret
+---
+name: Taito Adlib detection
+ragel: |
+  and_bh_i8.0xe0.
+  and_bl_i8.0xe0.
+  xor_bl_i8.0xc0.
+  or_bh_bl
+replace: |
+  xor bx, bx
+---
+name: Arkanoid 2 warning
+ragel: |
+  'REVOFDOH.DAT'
+warn: "Arkanoid 2: Also patch REVOFDOH.DAT"
+---
+name: Bubble Bobble warning
+ragel: |
+  'BUBBOB.DAT'
+warn: "Bubble Bobble: Also patch BUBBOB.DAT"
+---
+name: Qix warning 1
+ragel: |
+  'Boogie.MD'
+warn: "Qix: Patch BOOGIE.MD and MAIN.DAT"
+---
+name: Qix warning 2
+ragel: |
+  'QIX..'.0
+warn: "Qix: Also patch MAIN.DAT"
+---
+name: Rastan warning
+ragel: |
+  'RASTAN.DAT'
+warn: "Rastan: Also patch RASTAN.DAT"
