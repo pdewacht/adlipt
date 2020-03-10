@@ -220,7 +220,7 @@ unsigned emulate_opl2_read(unsigned ax) {
 
   if (config.enable_patching) {
     /*
-     * Typical Adlib routines use dummy IN AL,DX instructions to
+     * Typical AdLib routines use dummy IN AL,DX instructions to
      * provide a delay. This hurts because each of these INs generates
      * a fault and especially on slower CPUs the delay will be much
      * much longer than intended.
@@ -229,7 +229,7 @@ unsigned emulate_opl2_read(unsigned ax) {
      * compensate by adding delay code to our OUT emulation (which
      * will not fault).
      *
-     * We don't want to break Adlib detection routines though, there
+     * We don't want to break AdLib detection routines though, there
      * the INs are actually meaningful. So only patch if a register is
      * selected that wouldn't be used in such a routine.
      */

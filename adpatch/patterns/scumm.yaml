@@ -1,5 +1,5 @@
 ---
-name: LucasArts Adlib detection
+name: LucasArts AdLib detection
 ragel: |
   (
     mov_dx_i16.any.any.
@@ -39,7 +39,7 @@ replace: |
 
   end:
 ---
-name: LucasArts Adlib output (.EXE)
+name: LucasArts AdLib output (.EXE)
 ragel: |
   xchg_ah_al.
   (mov_dx_i16.0x88.0x03)?.
@@ -62,7 +62,7 @@ replace: |
   extern lucasarts_adlib
   call lucasarts_adlib
 ---
-name: LucasArts Adlib output (FM2.MDR) (part 1)
+name: LucasArts AdLib output (FM2.MDR) (part 1)
 ragel: |
   mov_dx_word_any16.
   mov_al_byte_bp_i8.0x04.
@@ -97,7 +97,7 @@ replace: |
   jmp fm2_mdr_part2
 
 ---
-name: LucasArts Adlib output (FM2.MDR) (part 2)
+name: LucasArts AdLib output (FM2.MDR) (part 2)
 ragel: |
   mov_dx_word_any16.
   mov_al_byte_bp_i8.0x04.
@@ -130,7 +130,7 @@ replace: |
   mov al, [bp+6]
   jpo fm2_mdr_loop
 ---
-name: LucasArts Adlib output (ADLIB.IMS) (part 1)
+name: LucasArts AdLib output (ADLIB.IMS) (part 1)
 ragel: |
   xchg_ah_al.
   mov_dx_i16.0x88.0x03.
@@ -164,7 +164,7 @@ replace: |
   inc dx
   jmp adlib_ims_part2
 ---
-name: LucasArts Adlib output (ADLIB.IMS) (part 2)
+name: LucasArts AdLib output (ADLIB.IMS) (part 2)
 ragel: |
   xchg_ah_al.
   mov_dx_i16.0x88.0x03.

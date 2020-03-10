@@ -1,5 +1,5 @@
 ---
-name: Early id Software Adlib check
+name: Early id Software AdLib check
 ragel: |
   ( test_byte_bp_i8_i8.0xFF.0xE0
   | test_di_i16.0xE0.0x00
@@ -15,7 +15,7 @@ ragel: |
 replace: |
   nop
 ---
-name: Early id Software Adlib output
+name: Early id Software AdLib output
 find: |
   pushf
   cli

@@ -1,5 +1,5 @@
 ---
-name: Taito Adlib output part 1/2
+name: Taito AdLib output part 1/2
 ragel: |
   push_ax.
   push_bx?.
@@ -45,7 +45,7 @@ replace: |
       add al, 4
       jmp taito_part2
 ---
-name: Taito Adlib output part 2/2
+name: Taito AdLib output part 2/2
 ragel: |
   push_ax.
   push_cx.
@@ -76,7 +76,7 @@ replace: |
       pop ax
       ret
 ---
-name: Taito Adlib detection
+name: Taito AdLib detection
 ragel: |
   and_bh_i8.0xe0.
   and_bl_i8.0xe0.

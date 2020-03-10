@@ -1,5 +1,5 @@
 ---
-name: Duke Nukem 3D / ROTT Adlib Detection
+name: Duke Nukem 3D / ROTT AdLib Detection
 find: |
     bits 32
     mov ebx, 0x60
@@ -63,7 +63,7 @@ replace: |
     bits 32
     mov eax,  1
 ---
-name: Duke Nukem 3D / ROTT Adlib output
+name: Duke Nukem 3D / ROTT AdLib output
 find: |
     bits 32
     mov ecx, eax

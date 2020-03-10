@@ -1,5 +1,5 @@
 ---
-name: Copysoft Adlib detection
+name: Copysoft AdLib detection
 find: |
   test word [bp-2], 0xE0
   jnz L1

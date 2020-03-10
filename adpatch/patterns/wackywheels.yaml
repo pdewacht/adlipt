@@ -1,5 +1,5 @@
 ---
-name: Wacky Wheels Adlib output
+name: Wacky Wheels AdLib output
 find: |
     bits 32
     mov ebx,0x388

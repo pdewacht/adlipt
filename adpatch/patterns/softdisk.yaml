@@ -1,5 +1,5 @@
 ---
-name: Softdisk/Dangerous Dave Adlib output
+name: Softdisk/Dangerous Dave AdLib output
 find: |
   pushf
   cli

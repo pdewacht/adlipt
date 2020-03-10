@@ -1,5 +1,5 @@
 ---
-name: WORX Toolkit Adlib detection (earlier version)
+name: WORX Toolkit AdLib detection (earlier version)
 find: |
   and bx, 0xE0E0
   mov ax, 0
@@ -12,7 +12,7 @@ find: |
 replace: |
   mov ax, 1
 ---
-name: WORX Toolkit Adlib detection (later version)
+name: WORX Toolkit AdLib detection (later version)
 find: |
   and bx, 0xE0E0
   db 0x22, 0xFB  ; and bh, bl
@@ -24,7 +24,7 @@ find: |
 replace: |
   mov ax, 1
 ---
-name: WORX Toolkit Adlib output (version 2.01)
+name: WORX Toolkit AdLib output (version 2.01)
 find: |
   push bx
   push cx
@@ -56,7 +56,7 @@ replace: |
   pop dx
   pop cx
 ---
-name: WORX Toolkit Adlib output (version 2.1) [requires 286+]
+name: WORX Toolkit AdLib output (version 2.1) [requires 286+]
 find: |
   push ax
   push bx

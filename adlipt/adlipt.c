@@ -238,7 +238,7 @@ static bool setup_qemm() {
   ports = collect_ports(&config);
   for (i = 0; ports[i]; i++) {
     if (qpi_get_port_trap(&qpi, ports[i])) {
-      cputs("Some other program is already intercepting Adlib I/O\r\n");
+      cputs("Some other program is already intercepting AdLib I/O\r\n");
       exit(1);
     }
   }

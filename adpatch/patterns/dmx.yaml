@@ -1,5 +1,5 @@
 ---
-name: DMX engine Adlib detection
+name: DMX engine AdLib detection
 find: |
   bits 32
   test cl,0xe0
@@ -15,7 +15,7 @@ replace: |
   bits 32
   mov edx,2
 ---
-name: DMX engine Adlib output (part A)
+name: DMX engine AdLib output (part A)
 find: |
   ; ax: port
   ; dx: register
@@ -104,7 +104,7 @@ replace: |
 
   SKIP:
 ---
-name: DMX engine Adlib output (part B)
+name: DMX engine AdLib output (part B)
 find: |
   ; ax: register
   ; dx: data

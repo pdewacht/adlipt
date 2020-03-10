@@ -6,7 +6,7 @@ http://www.serdashop.com/OPL2LPT
 
 ## ADLiPT
 
-The ADLiPT TSR emulates an Adlib sound card.
+The ADLiPT TSR emulates an AdLib sound card.
 [Read more.](adlipt/)
 
 ## ADPATCH

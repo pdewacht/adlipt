@@ -1,13 +1,13 @@
 # ADPATCH
 
 ADPATCH can patch games to directly support the OPL2LPT. After
-patching, configure the game for an Adlib sound card (in case this
+patching, configure the game for an AdLib sound card (in case this
 isn't auto-detected).
 
 Caveats:
 
 - Patching can break sound card support (including support for
-  non-Adlib cards).
+  non-AdLib cards).
 - Patched games might only work on the computer where the patch was
   done. This is because the patch hardcodes the parallel port I/O
   address, which I believe might vary from computer to computer.

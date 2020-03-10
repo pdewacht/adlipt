@@ -1,5 +1,5 @@
 ---
-name: Generic Adlib output (variant 1)
+name: Generic AdLib output (variant 1)
 find: |
   BEGIN
     mov dx, 0x388
@@ -56,7 +56,7 @@ replace: |
   %include 'standard.s'
   pop cx
 ---
-name: Generic Adlib output (variant 2)
+name: Generic AdLib output (variant 2)
 find: |
   BEGIN
     mov dx, 0x388

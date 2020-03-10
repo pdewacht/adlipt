@@ -6,7 +6,7 @@
 
 
 %%{
-  machine AdlibScanner;
+  machine AdLibScanner;
   alphtype unsigned char;
   include "patterns.rl";
   write data nofinal;
@@ -59,7 +59,7 @@ int scan_and_copy(FILE *in, FILE *out, struct match *matches) {
 
     %% write exec;
 
-    if (cs == AdlibScanner_error) {
+    if (cs == AdLibScanner_error) {
       fprintf(stderr, "Internal error: scan error\n");
       return -1;
     }

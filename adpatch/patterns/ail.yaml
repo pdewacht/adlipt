@@ -1,5 +1,5 @@
 ---
-name: Miles Audio Interface Library 2.0 (Adlib check)
+name: Miles Audio Interface Library 2.0 (AdLib check)
 ragel: |
   push_ds.
   push_si.
@@ -32,7 +32,7 @@ replace: |
   pop cx
   retf
 ---
-name: Miles Audio Interface Library 2.0 (Adlib output)
+name: Miles Audio Interface Library 2.0 (AdLib output)
 ragel: |
   out_dx_al.
   mov_ah_i8.any.
@@ -52,7 +52,7 @@ replace: |
   extern miles_far_output
   jmp miles_far_output
 ---
-name: Miles Audio Interface Library 3.0 (Adlib check)
+name: Miles Audio Interface Library 3.0 (AdLib check)
 ragel: |
   push_ds.
   push_si.
@@ -85,7 +85,7 @@ replace: |
   pop cx
   ret
 ---
-name: Miles Audio Interface Library 3.0 or /32 (Adlib output)
+name: Miles Audio Interface Library 3.0 or /32 (AdLib output)
 comment: |
   This code sequence is identical in 16-bit real mode and 32-bit
   protected mode versions...
@@ -109,7 +109,7 @@ replace: |
   extern miles_near_output
   jmp miles_near_output
 ---
-name: Miles Audio Interface Library/32 (Adlib check)
+name: Miles Audio Interface Library/32 (AdLib check)
 ragel: |
   push_ebx.
   push_esi.
@@ -144,7 +144,7 @@ replace: |
   pop ecx
   ret
 ---
-name: Miles Audio Interface Library/16 (Adlib check)
+name: Miles Audio Interface Library/16 (AdLib check)
 ragel: |
   ((
     mov_ax_i16.0x04.0x00.
@@ -172,7 +172,7 @@ ragel: |
 replace: |
   mov ax, 1
 ---
-name: Miles Audio Interface Library/16 (Adlib output)
+name: Miles Audio Interface Library/16 (AdLib output)
 ragel: |
   ((mov_dx_i16.any.any) | (cs?.mov_dx_word_any16)).
   mov_al_bl.

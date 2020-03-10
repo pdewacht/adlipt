@@ -1,5 +1,5 @@
 ---
-name: Sierra install.exe Adlib detection
+name: Sierra install.exe AdLib detection
 find: |
   L1: in al, dx
   loop L1
@@ -13,7 +13,7 @@ find: |
 replace: |
   nop
 ---
-name: Sierra SCI Adlib output (variant 1)
+name: Sierra SCI AdLib output (variant 1)
 find: |
   mov dx, 0x388
   db 0x8B, 0xC3  ;mov ax,bx alt encoding
@@ -35,7 +35,7 @@ replace: |
   %include 'standard_st.s'
   pop cx
 ---
-name: Sierra SCI Adlib output (variant 2)
+name: Sierra SCI AdLib output (variant 2)
 find: |
   mov dx, [cs:ANYWORD]
   db 0x8B, 0xC3  ;mov ax,bx alt encoding
@@ -57,7 +57,7 @@ replace: |
   %include 'standard_st.s'
   pop cx
 ---
-name: Sierra SCI Adlib output (variant 3)
+name: Sierra SCI AdLib output (variant 3)
 find: |
   mov dx, [cs:ANYWORD]
   db 0x8B, 0xC3  ;mov ax,bx alt encoding
@@ -77,7 +77,7 @@ replace: |
   push bx
   %include 'standard_st.s'
 ---
-name: Sierra SCI Adlib output (32-bit)
+name: Sierra SCI AdLib output (32-bit)
 find: |
   bits 32
   db 0x66, 0x64, 0x8B, 0x15, ANYBYTE, ANYBYTE, ANYBYTE, ANYBYTE  ;mov dx, [dword fs:ANYDWORD]

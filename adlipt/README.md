@@ -1,6 +1,6 @@
 # ADLiPT
 
-ADLiPT is a driver for the "Adlib on a parallel port" OPL2LPT board.
+ADLiPT is a driver for the "AdLib on a parallel port" OPL2LPT board.
 For more information, see [the thread on the Vogons forum][1].
 
 [1]: https://www.vogons.org/viewtopic.php?f=62&t=55105
@@ -41,7 +41,7 @@ Load ADLiPT using the command:
 
 - **`BLASTER=220`** Enable Sound Blaster FM emulation. ADLiPT will
   intercept the Sound Blaster FM ports in addition to the standard
-  Adlib ports. (It won't however fake enough of a Sound Blaster to
+  AdLib ports. (It won't however fake enough of a Sound Blaster to
   pass installation checks, so this won't be very useful if you don't
   have a Sound Blaster.)
 

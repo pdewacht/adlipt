@@ -1,5 +1,5 @@
 ---
-name: Apogee Adlib output
+name: Apogee AdLib output
 ragel: |
   0x8b.any.0x06.  # mov r16, word ptr [bp+6]
   pushf.
