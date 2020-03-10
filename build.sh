@@ -14,6 +14,7 @@ cp adpatch/README.md "$DIR/adpatch.txt"
 cp opl2test/opl2test.exe "$DIR/"
 cp opl2test/opl3test.exe "$DIR/"
 cp opl2test/opl2test.mp3 "$DIR/"
+cp opl2test/oplreset.exe "$DIR/"
 cp opl2test/README.md "$DIR/opl2test.txt"
 
 rm -f oplutil.zip
