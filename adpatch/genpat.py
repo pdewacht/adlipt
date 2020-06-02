@@ -158,6 +158,8 @@ with redirect_stdout(open('patterns.rl', 'wt')):
             print("  MATCH(%s)" % pat['patch']['idx'])
         if 'warn' in pat:
             print("  WARN(%s)" % c_string(pat['warn']))
+        if 'fatal' in pat:
+            print("  FATAL(%s)" % c_string(pat['fatal']))
         print("};")
         print()
     print("""

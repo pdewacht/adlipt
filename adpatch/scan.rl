@@ -19,6 +19,10 @@
 #define WARN(msg)                                               \
   printf("Warning: %s\n", msg);
 
+#define FATAL(msg)                                              \
+  WARN(msg)                                                     \
+  goto fail;
+
 #define MATCH(n)                                                \
   if (num_matches == MAX_MATCHES) goto too_many_matches;        \
   matches[num_matches].patch = &patch_data[n];                  \
@@ -86,5 +90,6 @@ int scan_and_copy(FILE *in, FILE *out, struct match *matches) {
 
  too_many_matches:
   fprintf(stderr, "Too many matching patterns, something is wrong\n");
+ fail:
   return -1;
 }

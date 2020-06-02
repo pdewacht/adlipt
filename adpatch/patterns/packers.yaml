@@ -2,19 +2,19 @@
 name: EXEPACK signature
 ragel: |
   'Packed file is corrupt'
-warn: "This file might be compressed using EXEPACK."
+fatal: "This file might be compressed using EXEPACK."
 ---
 name: PKLITE signature
 ragel: |
   'PKLITE Copr. '
-warn: "This file might be compressed using PKLITE."
+fatal: "This file might be compressed using PKLITE."
 ---
 name: LZEXE signature
 ragel: |
   'LZ09'|'LZ91'
-warn: "This file might be compressed using LZEXE."
+fatal: "This file might be compressed using LZEXE."
 ---
 name: UPX signature
 ragel: |
   'This file is packed with the UPX executable packer'
-warn: "This file might be compressed using UPX."
+fatal: "This file might be compressed using UPX."
