@@ -1,0 +1,49 @@
+---
+name: Paku Paku (part 1 of 2)
+ragel: |
+  out_dx_al.
+  mov_cx_i16.0x06.0x00.
+  in_al_dx.
+  loop_i8.0xFD.
+  inc_dx.
+  mov_al_ah.
+  out_dx_al.
+  dec_dx.
+  mov_cx_i16.0x23.0x00.
+  in_al_dx.
+  loop_i8.0xFD.
+  ret
+replace: |
+  extern paku_paku_out
+  jmp paku_paku_out
+---
+name: Paku Paku (part 2 of 2)
+ragel: |
+  mov_ax_i16.0x04.0x60.
+  call_any16.
+  mov_ax_i16.0x04.0x80.
+  call_any16.
+  in_al_dx.
+  and_al_i8.0x0E0.
+  jnz_i8.0x28.
+  mov_ax_i16.0x02.0xFF.
+  call_any16.
+  mov_ax_i16.0x04.0x21.
+  call_any16.
+  mov_cx_i16.0x80.0x00.
+  in_al_dx.
+  loop_i8.0xFD.
+  and_al_i8.0xE0.
+  cmp_al_i8.0xC0.
+  jnz_i8.0x04
+replace: |
+  global paku_paku_out
+  jmp skip
+
+  paku_paku_out:
+  %define ARG1 al
+  %define ARG2 ah
+  %include 'standard.s'
+  ret
+
+  skip:
