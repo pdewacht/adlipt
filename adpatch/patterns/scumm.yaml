@@ -150,7 +150,7 @@ replace: |
   adlib_ims_part1:
   push ax
   xchg ah, al
-  # standard.s begins here
+  ; standard.s begins here
   stc
   adlib_ims_loop:
   mov dx, PORT
@@ -196,5 +196,5 @@ replace: |
   loop L2
   mov al, ah
   jpo adlib_ims_loop
-  # standard.s ends here
+  ; standard.s ends here
   pop ax
